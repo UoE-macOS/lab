@@ -1,0 +1,27 @@
+#!/bin/bash
+
+# Need to define a category for the app from the standard set.
+Category="$4"
+
+# Need to define the path to the app.
+ApplicationPath="$5"
+
+# Get the app name.
+ApplicationName=`basename "$ApplicationPath"`
+
+# Set our folder paths
+CategoryPath="/Library/MacSD/Applications/$Category"
+LinkPath="/Library/MacSD/Applications/$Category/$ApplicationName"
+
+if ! [ -d "$CategoryPath" ]; then
+	mkdir "$CategoryPath"
+fi
+
+if [ -L "$LinkPath" ]; then
+	rm -f "$LinkPath" 
+	ln -s "$ApplicationPath" "$LinkPath"
+else
+	ln -s "$ApplicationPath" "$LinkPath"
+fi
+
+exit 0;
