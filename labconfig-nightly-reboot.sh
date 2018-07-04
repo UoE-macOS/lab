@@ -6,8 +6,8 @@
 # 
 # 
 #
-# Date: "Tue  8 May 2018 15:16:09 BST"
-# Version: 0.1
+# Date: "8 June 2018 15:16:09 BST"
+# Version: 0.2
 # Origin: https://github.com/UoE-macOS/lab.git
 # Released by JSS User: dsavage
 #
@@ -42,7 +42,6 @@ while ! [ "$counter" == 0 ]; do
 
 # The body of the message that will be displayed, advising user of the need to reboot.
 PROMPT_MESSAGE="This Mac will perform its nightly restart in $counter minute(s). 
-
 Please save your work. 
  
 "
@@ -64,7 +63,6 @@ done
 kill $jamfHelperPID
 # Perform reboot. This cannot be a graceful reboot as that offers the user the option to cancel it.
 "$jamfHelper" -windowType utility -icon "$LOGO" -heading "Restarting..." -description "This Mac will now restart.
-
  " -timeout 5
 }
  
