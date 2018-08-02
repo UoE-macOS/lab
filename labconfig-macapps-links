@@ -1,5 +1,27 @@
 #!/bin/bash
 
+######
+#
+# Date: Thu  2 Aug 2018 14:37:21 BST
+# Version: 0.2
+# Author: dsavage
+#
+######
+
+# Need to define a category for the app from the standard set of:
+# Accessories
+# Audio players & editors
+# Data Analysis software
+# Design-3D software
+# Developer Tools
+# Document & file viewers
+# Document & text editors
+# Graphics software
+# Internet tools
+# Language & Translation software
+# Utilities
+# Video editors
+
 # Need to define a category for the app from the standard set.
 Category="$4"
 
@@ -10,18 +32,32 @@ ApplicationPath="$5"
 ApplicationName=`basename "$ApplicationPath"`
 
 # Set our folder paths
-CategoryPath="/Library/MacSD/Applications/$Category"
-LinkPath="/Library/MacSD/Applications/$Category/$ApplicationName"
+MacSD="/Library/MacSD"
+ConfigDir="${MacSD}/MacAppsConf"
+ConfFile="${ConfigDir}/LN~${Category}~${ApplicationName}"
+CategoryPath="${MacSD}/Applications/$Category"
+LinkPath="${MacSD}/Applications/$Category/$ApplicationName"
 
-if ! [ -d "$CategoryPath" ]; then
-	mkdir "$CategoryPath"
+# Build the folder structure
+if ! [ -d "${MacSD}" ]; then
+	mkdir "${MacSD}"
+fi
+if ! [ -d "${MacSD}/Applications" ]; then
+	mkdir "${MacSD}/Applications"
+fi
+# Make sure the icon is set
+python -c 'import Cocoa; Cocoa.NSWorkspace.sharedWorkspace().setIcon_forFile_options_(Cocoa.NSImage.alloc().initWithContentsOfFile_("/System/Library/CoreServices/CoreTypes.bundle/Contents/Resources/ApplicationsFolderIcon.icns"), "/Library/MacSD/Applications", 0)'
+if ! [ -d "${ConfigDir}" ]; then
+	mkdir "${ConfigDir}"
+fi
+if ! [ -d "${CategoryPath}" ]; then
+	mkdir "${CategoryPath}"
 fi
 
-if [ -L "$LinkPath" ]; then
-	rm -f "$LinkPath" 
-	ln -s "$ApplicationPath" "$LinkPath"
-else
-	ln -s "$ApplicationPath" "$LinkPath"
-fi
+# Delete the conf file
+rm -f "${ConfFile}"
+
+# Link to add
+echo "${ApplicationPath}+${LinkPath}" > "${ConfFile}"
 
 exit 0;
