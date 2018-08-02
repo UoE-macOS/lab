@@ -1,0 +1,150 @@
+#!/bin/bash
+
+######
+#
+# Date: Thu  2 Aug 2018 14:37:21 BST
+# Version: 0.2
+# Author: dsavage
+#
+######
+
+# Set variables
+LDAP_SERVER="ldaps://authorise.is.ed.ac.uk"
+LDAP_BASE="dc=authorise,dc=ed,dc=ac,dc=uk"
+LDAP_COL="eduniCollegeCode"
+LDAP_FULLNAME="cn"
+LDAP_UIDNUM="uidNumber"
+
+# Create log file
+logFile="/Library/Logs/master-login.log"
+
+# Get logged in user
+NetUser=`python -c 'from SystemConfiguration import SCDynamicStoreCopyConsoleUser; import sys; username = (SCDynamicStoreCopyConsoleUser(None, None, None) or [None])[0]; username = [username,""][username in [u"loginwindow", None, u""]]; sys.stdout.write(username + "\n");'`
+
+# Check to see if logfile exists. If so then delete as we only need log for the current user
+if [ -f "$logFile" ]
+then
+    rm -f $logFile
+fi
+
+# Function for obtaining timestamp
+timestamp() {
+	while read -r line
+	do
+        timestamp=`date`
+        echo "[$timestamp] $line"
+	done
+}
+
+# Function for obtaining school code
+get_school() {
+  # Tweak to return the College rather than the School, we just want to make sure it's not a  local account and the dst test accounts don't have school codes...   
+  uun=${1}
+  school_code=$(ldapsearch -x -H "${LDAP_SERVER}" -b"${LDAP_BASE}" -s sub "(uid=${uun})" "${LDAP_COL}" | awk -F ': ' '/^'"${LDAP_COL}"'/ {print $2}')
+        
+  # Just return raw eduniSchoolCode for now - ideally we'd like the human-readable abbreviation
+  [ -z "${school_code}" ] && school_code="Unknown"
+  echo ${school_code}
+}
+
+# Function to display JAMF Helper message
+displayMessage() {
+    # Get hostname and convert to upper case
+	tempCompName=`hostname`
+	compName=`echo "$tempCompName" | tr '[:lower:]' '[:upper:]'`
+	# Call JAMF Helper window and show message
+	"/Library/Application Support/JAMF/bin/jamfHelper.app/Contents/MacOS/jamfhelper" \
+	-windowType "fs" \
+	-heading "Your Mac is being set up for use." \
+	-description "$1
+	
+	Computer name : $compName
+	" \
+	-icon /System/Library/CoreServices/CoreTypes.bundle/Contents/Resources/com.apple.imac-aluminum-24.icns \
+	-iconSize "256" \
+	-alignDescription "center" \
+	-alignHeading "center" &
+}
+
+echo "Current logged in user is $NetUser" | timestamp >> $logFile
+
+# If the logged in user does not exist in AD or user is unknown
+if [ -z "$(get_school ${NetUser})" ] || [ "$(get_school ${NetUser})" == "Unknown" ]
+#  Then most likely not an AD account. Exit script as no redirection can be performed
+then
+	echo "Cannot run login policies. Most likely because of one of the following: " | timestamp >> $logFile
+	echo "1. $NetUser is a local account." | timestamp >> $logFile
+	echo "2. The logged in user does not have an associated school code." | timestamp >> $logFile
+	echo "3. Active Directory is not reachable." | timestamp >> $logFile
+	echo "Bypassing login policies and quiting master login script." | timestamp >> $logFile
+	exit 0;
+fi
+
+echo "Locking screen." | timestamp >> $logFile
+# We don't want the user to quit jamf helper, so initiate screen lock - I'm not sure if this is required - Some admins seem to indicate that JAMFHelper can be quit with cmd+Q
+/System/Library/CoreServices/RemoteManagement/AppleVNCServer.bundle/Contents/Support/LockScreen.app/Contents/MacOS/LockScreen -session 256 &
+
+# Display initial JAMF Helper message
+echo "Displaying intial jamfHelper message.." | timestamp >> $logFile
+description='This may take a minute, depending on your network speed.
+Please call IS Helpline at 0131 651 5151 if you need assistance.'
+(displayMessage "$description")
+sleep 3s
+
+# set acrobat pro as the default pdf handler if it is installed
+if [ -d /Applications/Adobe\ Acrobat\ DC/Adobe\ Acrobat.app ]; then
+	duti -s com.adobe.Acrobat.Pro pdf all
+fi
+
+# Kill this instance of JAMF Helper
+kill jamfhelper
+
+# Run LabMon policy
+echo "Running Labmon policy.." | timestamp >> $logFile
+desc3='LABMON will happen here! …'
+(displayMessage "$desc3")
+sleep 3s
+
+# Kill this instance of JAMF Helper
+kill jamfhelper
+
+# Run folder redirection policy
+echo "Running folder redirection policy..." | timestamp >> $logFile
+descFolderRedirect='Running folder redirection….'
+(displayMessage "$descFolderRedirect")
+# Run custom trigger for folder redirection
+/usr/local/jamf/bin/jamf policy -event Redirect
+sleep 3s
+
+# Kill this instance of JAMF Helper
+kill jamfhelper
+
+# Run Desktop and Dock policy
+echo "Running Desktop and Dock policy..." | timestamp >> $logFile
+desc2='Configuring the Desktop and Dock….'
+(displayMessage "$desc2")
+# Run custom trigger for desktop image
+/usr/local/jamf/bin/jamf policy -event Desktop
+# We need to rework the existing dockutil script, will add additional options later
+/usr/local/jamf/bin/jamf policy -event MacApps
+/usr/local/jamf/bin/jamf policy -event OADock
+sleep 3s
+
+# Kill this instance of JAMF Helper
+kill jamfhelper
+
+echo "All custom login policies run." | timestamp >> $logFile
+descLogin='Logging in….'
+(displayMessage "$descLogin")
+
+# Sleep for a few seconds
+sleep 2s
+
+echo "Killing all instances of LockScreen and jamfHelper..." | timestamp >> $logFile
+# Kill the LockScreen and the JAMF helper once all login policies have completed
+killall -9 LockScreen
+killall -9 jamfhelper
+
+echo "Done" | timestamp >> $logFile
+
+exit 0;
