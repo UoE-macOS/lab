@@ -1,0 +1,103 @@
+#!/bin/bash
+
+######
+#
+# Date: Mon  6 Aug 2018 10:21:31 BST
+# Version: 0.2
+# Author: dsavage
+#
+######
+
+Clean_Apps="App Store.app
+Automator.app
+Calculator.app
+Calendar.app
+Chess.app
+Contacts.app
+DVD Player.app
+Dashboard.app
+Dictionary.app
+FaceTime.app
+Font Book.app
+Image Capture.app
+Install macOS High Sierra.app
+Launchpad.app
+Mail.app
+Maps.app
+Messages.app
+Mission Control.app
+Notes.app
+Photo Booth.app
+Photos.app
+Preview.app
+QuickTime Player.app
+Reminders.app
+Safari.app
+Stickies.app
+System Preferences.app
+TextEdit.app
+Time Machine.app
+Utilities
+iBooks.app
+iTunes.app"
+
+echo "$Clean_Apps" > /tmp/clean_apps.txt
+
+
+# Clear out the apps
+
+# Change the delimeter to a new line
+oIFS="$IFS"
+IFS=$'\n'
+Apps_Installed=($(ls -1 /Applications))
+
+echo "$Apps_Installed"
+for application in "${Apps_Installed[@]}"; do
+	echo "$application"
+	if grep -q "$application" /tmp/clean_apps.txt; then
+		echo Application is an OS default, skipping.
+	else
+	#Have cases for apps that need special removal, for everything else just delete
+		case "$application" in
+    	"Sophos Anti-Virus.app")
+       		# Run Sophos' uninstall process to allow a clean version to be applied.
+	        SophosInstaller=`find "/Library/Application Support/Sophos" -type d -name "Installer.app"`
+	        "${SophosInstaller}"/Contents/MacOS/tools/InstallationDeployer --remove
+            # Scrub the autoupdate cache and lockfile
+            rm -f /Library/Caches/com.sophos.sau/CID/cidsync.upd
+            rm -f /Library/Caches/com.sophos.sau/sophosautoupdate.plist
+            rm -f /Library/Preferences/com.sophos.sau.plist.lockfile
+            sleep 1
+            rm -dfR /Library/Caches/com.sophos.sau
+       		;;
+    	Adobe*)
+    		if [ "${application}" == "Adobe Acrobat Reader DC.app" ]; then
+    			rm -dfR "/Applications/${application}"
+    			rm -dfR "/Library/Internet Plug-Ins/AdobePDFViewer.plugin"
+    		fi
+    		# Possibly need https://helpx.adobe.com/uk/creative-cloud/kb/cc-cleaner-tool-installation-problems.html for CC apps
+    		;;
+        Microsoft*)
+        	if [ "${application}" == "Microsoft Silverlight" ]; then
+            	rm -dfR "/Applications/${application}"
+            fi
+            if [ "${application}" == "Microsoft Lync.app" ]; then
+            	rm -dfR "/Applications/${application}"
+            fi
+            # Office can be upgraded in-place
+            ;;
+    	*) 
+    		rm -Rdf "/Applications/${application}"
+    		;;      
+  esac
+  fi
+done
+IFS="$oIFS"
+
+# Delete any existing launchagents
+rm -f /Library/LaunchAgents/*
+
+# Delete any legacy startupitems
+rm -dfR /Library/StartupItems/*
+
+exit 0;
