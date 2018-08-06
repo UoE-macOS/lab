@@ -1,0 +1,215 @@
+#!/bin/bash
+
+###################################################################
+#
+# This script is run at enrollmentcomplete on non-DEP machines.
+# We assume that the quickadd package is being run by a user who
+# may or may not be the intended primary user of the machine.
+#
+# The script will ask for the username of the primary user (if run when a user 
+# is logged on) and, if a password is provided which matches our dircetory service
+# and there is no existing account for that user on this machine, will
+# then create a local account for that user. If the machine is a
+# laptop it is named with a compbination of that user's school code
+# and the serial number. If it is a desktop the name is looked up
+# in our network database.
+#
+# Finally the policy to install our core-applications is called.
+#
+# Date: "Mon Aug  6 10:21:30 BST"
+# Version: 0.1
+# Origin: https://github.com/UoE-macOS/lab
+# Released by JSS User: dsavage
+#
+##################################################################
+
+KRB_REALM='ED.AC.UK'
+EDLAN_DB="https://www.edlan-db.ucs.ed.ac.uk/webservice/pie.cfm"
+LOCK_FILE="/var/run/UoEQuickAddRunning"
+JSS_URL="$(defaults read /Library/Preferences/com.jamfsoftware.jamf.plist jss_url)"
+
+check_jss_available() {
+  # Can we see the JSS?
+  logger "$0: Checking JSS availability for $JSS_URL"
+  curl -I ${JSS_URL} &> /dev/null
+  jss_status=$?
+
+  if [ ${jss_status} -ne 0 ]
+  then
+    echo "Can't contact JSS at ${JSS_URL}"
+    echo "Error status was: ${jss_status}"
+    echo "Please contact support"
+    exit 1
+  else
+    true
+  fi
+} 
+
+get_cmd() {
+    # These are the two background install locations.
+    cmd1="installer -pkg /Library/MacMDP/Downloads/QuickAddLab-0.1-1.pkg"
+    cmd2="installer -pkg /Library/Application Support/JAMF/Downloads/QuickAddLab-0.1-1.pkg"
+    # Determine installation process
+    checkprocess1=`ps -A | grep "$cmd1" | grep -v "grep"`
+    checkprocess2=`ps -A | grep "$cmd2" | grep -v "grep"`
+
+    if [ -z $checkprocess1 ] && [ -z $checkprocess2 ]; then
+	    background="False"
+    else
+	    background="True"
+    fi
+    echo ${background}
+}
+
+delete_lcfg() {
+if [ $dialogue == "YES" ]; then
+	# Display a message in the background...
+	/Library/Application\ Support/JAMF/bin/jamfHelper.app/Contents/MacOS/jamfHelper\
+ -windowType utility\
+ -title 'UoE Mac Supported Desktop'\
+ -heading 'Removing LCFG'\
+ -icon '/System/Library/CoreServices/Installer.app/Contents/Resources/Installer.icns'\
+ -timeout 99999\
+ -description "$(echo -e We are removing the previous management framework.\\n\\nThis will take several minutes.\\nPlease do not restart your computer)" &
+	/usr/local/bin/jamf policy -event Delete-LCFG
+	killall jamfHelper
+else
+/usr/local/bin/jamf policy -event Delete-LCFG
+fi
+}
+
+delete_apps() {
+if [ $dialogue == "YES" ]; then
+	# Display a message in the background...
+	/Library/Application\ Support/JAMF/bin/jamfHelper.app/Contents/MacOS/jamfHelper\
+ -windowType utility\
+ -title 'UoE Mac Supported Desktop'\
+ -heading 'Removing Previously Installed Apps'\
+ -icon '/System/Library/CoreServices/Installer.app/Contents/Resources/Installer.icns'\
+ -timeout 99999\
+ -description "$(echo -e We are removing the previously installed apps.\\n\\nThis will take several minutes.\\nPlease do not restart your computer)" &
+	/usr/local/bin/jamf policy -event Delete-Apps
+	killall jamfHelper
+else
+/usr/local/bin/jamf policy -event Delete-Apps
+fi
+}
+
+bind_ad() {
+/usr/local/bin/jamf policy -event Bind-AD
+}
+
+trigger_core_apps() {
+if [ $dialogue == "YES" ]; then
+	# Display this message but send the jamfhelper process into the background
+	# so that execution continues
+	/Library/Application\ Support/JAMF/bin/jamfHelper.app/Contents/MacOS/jamfHelper\
+ -windowType utility\
+ -title 'UoE Mac Supported Desktop'\
+ -heading 'Checking Core Applications'\
+ -icon '/System/Library/CoreServices/Installer.app/Contents/Resources/Installer.icns'\
+ -timeout 99999\
+ -description "$(echo -e We are ensuring that your core applications are installed and up-to-date.\\n\\nThis will take several minutes.\\n\\nPlease do not restart your computer.)" &
+	/usr/local/bin/jamf policy -event Core-Apps
+	killall jamfHelper
+else
+	/usr/local/bin/jamf policy -event Core-Apps
+fi
+}
+
+trigger_os_installer() {
+if [ $dialogue == "YES" ]; then
+	# Display this message but send the jamfhelper process into the background
+	# so that execution continues
+	/Library/Application\ Support/JAMF/bin/jamfHelper.app/Contents/MacOS/jamfHelper\
+ -windowType utility\
+ -title 'UoE Mac Supported Desktop'\
+ -heading 'Checking Core Applications'\
+ -icon '/System/Library/CoreServices/Installer.app/Contents/Resources/Installer.icns'\
+ -timeout 99999\
+ -description "$(echo -e We are now putting the new macOS installer in-place, if it isn't available.\\n\\nThis should take 20 to 30 minutes.\\n\\nThe upgrade will launch automatically once this installation is complete.\\n\\nPlease do not restart your computer.)" &
+	/usr/local/bin/jamf policy -event Install-macOS
+	killall jamfHelper
+else
+	/usr/local/bin/jamf policy -event Install-macOS
+fi
+}
+
+get_macaddr() {
+  active_adapter=`route get ed.ac.uk | grep interface | awk '{print $2}'`
+  macaddr=$(ifconfig $active_adapter ether | awk '/ether/ {print $NF}')
+  logger "$0: MAC Address: ${macaddr}"
+  echo ${macaddr}
+}
+
+
+get_edlan_dnsname() {
+  mac=$(get_macaddr)
+  if ! [ -z ${mac} ]; then
+     #dnsfull=$(curl --insecure "${EDLAN_DB}?MAC=${mac}&return=DNS" 2>/dev/null) *** Comment out to work with 10.13, pending edlan changes.
+     dnsfull=`python -c "import urllib2, ssl;print urllib2.urlopen('${EDLAN_DB}?MAC=${mac}&return=DNS', context=ssl._create_unverified_context()).read()"`
+     # Remove anything potentially dodgy 
+     dnsname=`echo ${dnsfull} | awk -F "." '{print $1}'`
+     echo ${dnsname}
+  fi
+  logger "$0: DNS Name: ${dnsname}"
+}
+
+set_computer_name() {
+  name=$(get_edlan_dnsname)
+  /usr/sbin/scutil --set LocalHostName $( echo "${name}" | awk -F '.' '{print $1}' )
+  /usr/sbin/scutil --set ComputerName "${name}"
+  /usr/sbin/scutil --set HostName "${name}"
+  logger "$0: Set machine name to ${name}"
+}
+
+update_jss() {
+  /usr/local/bin/jamf recon -endUsername LabUser
+}
+
+# Drop a lock file so that other processes know
+# we are running
+
+touch "${LOCK_FILE}"
+
+# Is there a user logged in
+username=`python -c 'from SystemConfiguration import SCDynamicStoreCopyConsoleUser; import sys; username = (SCDynamicStoreCopyConsoleUser(None, None, None) or [None])[0]; username = [username,""][username in [u"loginwindow", None, u""]]; sys.stdout.write(username + "\n");'`
+dialogue=""
+
+# What OS is running?
+osversion=`sw_vers -productVersion | awk -F . '{print $2}'`
+
+# Set the computers name
+set_computer_name
+
+# If an old LCFG installation exists, delete it.
+delete_lcfg
+
+# Delete the existing app set on the mac
+delete_apps
+
+# Run recon to let the JSS know who the primary user of this machine will be
+update_jss ${uun} 
+
+# Run any policies that are triggered by the 'Core-Apps' event  
+trigger_core_apps
+
+# Cache offline policies for login items
+#/usr/local/bin/jamf policy -event Login
+/usr/local/bin/jamf policy -event Dock
+/usr/local/bin/jamf policy -event LoginItem
+
+# Check whether School/dept's local admin account exists and, if not, created it
+/usr/local/bin/jamf policy -event Check-Local-Admin
+
+# Run any policies that are triggered by the 'OS-Installer' event  (do this last)
+free_space=`diskutil info / | grep "Free Space" | awk '{print $4}' | awk -F "." '{print $1}'`
+
+if [ $free_space -ge 25 ]; then
+	rm -f "${LOCK_FILE}"
+	trigger_os_installer
+else
+	logger "$0: Not enough free disk space to continue"
+fi
+
+exit 0;
