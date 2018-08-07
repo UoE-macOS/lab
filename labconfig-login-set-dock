@@ -5,8 +5,8 @@
 # Script to add applications  to the dock.
 # Utilises - https://github.com/kcrawford/dockutil
 #
-# Last Changed: "Thu  2 Aug 2018 14:37:21 BST"
-# Version: 0.4
+# Last Changed: "Tue  7 Aug 2018 13:44:19 BST"
+# Version: 0.5
 # Origin: https://github.com/UoE-macOS/
 # Released by JSS User: ganders1
 #
@@ -46,6 +46,26 @@ fi
 
 if [ -d "/Applications/Microsoft OneNote.app" ]; then
 	$DOCK_UTIL --add "/Applications/Microsoft OneNote.app" --no-restart $DOCK_PREF
+fi
+
+if [ -d "/Applications/Google Chrome.app" ]; then
+	$DOCK_UTIL --add "/Applications/Google Chrome.app" --no-restart $DOCK_PREF
+fi
+
+if [ -d "/Applications/Adobe Acrobat" ]; then
+	$DOCK_UTIL --add "/Applications/Adobe Acrobat DC/Adobe Acrobat.app" --no-restart $DOCK_PREF
+fi
+
+if [ -d "/Applications/Adobe Illustrator CC 2017" ]; then
+	$DOCK_UTIL --add "/Applications/Adobe Illustrator CC 2017/Adobe Illustrator CC 2017.app" --no-restart $DOCK_PREF
+fi
+
+if [ -d "/Applications/Adobe InDesign CC 2017" ]; then
+	$DOCK_UTIL --add "/Applications/Adobe InDesign CC 2017/Adobe InDesign CC 2017.app" --no-restart $DOCK_PREF
+fi
+
+if [ -d "/Applications/Adobe Photoshop CC 2017" ]; then
+	$DOCK_UTIL --add "/Applications/Adobe Photoshop CC 2017/Adobe Photoshop CC 2017.app" --no-restart $DOCK_PREF
 fi
 
 if [ -d "/Library/MacSD/Applications" ]; then
@@ -92,6 +112,9 @@ $DOCK_UTIL --remove "Messages" --no-restart $DOCK_PREF
 $DOCK_UTIL --remove "FaceTime"	--no-restart $DOCK_PREF
 $DOCK_UTIL --remove "iTunes" --no-restart $DOCK_PREF
 $DOCK_UTIL --remove "iBooks" --no-restart $DOCK_PREF
+$DOCK_UTIL --remove "Launchpad" --no-restart $DOCK_PREF
+$DOCK_UTIL --remove "App Store" --no-restart $DOCK_PREF
+$DOCK_UTIL --remove "System Preferences" --no-restart $DOCK_PREF
 
 
 # Kill the dock so it will relaunch with our added content.
