@@ -6,12 +6,20 @@
 # 
 # 
 #
-# Date: "Wed  4 Jul 2018 16:50:50 BST"
-# Version: 0.1
+# Date: "Tue 14 Aug 2018 15:56:14 BST"
+# Version: 0.2
 # Origin: https://github.com/UoE-macOS/lab.git
-# Released by JSS User: rcoleman
+# Released by JSS User: ganders1
 #
 ##################################################################
+
+
+set -x
+
+# Make sure preference doesn't ask for confirmation for an unknown server.
+# Ideally this should be done within a config profile however some admins have problems with this
+# https://www.jamf.com/jamf-nation/discussions/23565/you-are-attempting-to-connect-to-the-server-dialog-box-since-10-12-4
+defaults write /Library/Preferences/com.apple.NetworkAuthorization AllowUnknownServers -bool YES
 
 LDAP_SERVER="ldaps://authorise.is.ed.ac.uk"
 LDAP_BASE="dc=authorise,dc=ed,dc=ac,dc=uk"
@@ -111,8 +119,9 @@ then
 	while [ -z $homePath ] && [ ${homePathTries} -lt 5 ]
 	do
 		homePathTries=$((${homePathTries}+1))
-		echo "Attempt to obtain home path : $homePathTries" | timestamp >> $logFile		
-		homePath=`dscl localhost -read "/Active Directory/ED/All Domains/Users/${NetUser}" | grep 'SMBHome:' | awk '{print $2}'`
+		echo "Attempt to obtain home path : $homePathTries" | timestamp >> $logFile
+        sleep 2s
+		homePath=`dscl localhost -read "/Active Directory/ED/All Domains/Users/${NetUser}" | grep 'SMBHome:' | awk '{print $2}'`        
 	done
 	# If after 5 attempts we still cannot obtain the homepath, quit the script
 	if [ -z ${homePath} ]
@@ -157,10 +166,7 @@ echo "Result of NETSTAT: ${SERVER_CONNECTION}" | timestamp >> $logFile
 echo "Is home share mounted?" | timestamp >> $logFile
 if [ "$(check_mount ${homeSharePoint})" -eq 1 ] || [ -z "$(check_mount ${homeSharePoint})" ] 
 then
-    # Make sure preference doesn't ask for confirmation for an unknown server.
-    # Ideally this should be done within a config profile however some admins have problems with this
-    # https://www.jamf.com/jamf-nation/discussions/23565/you-are-attempting-to-connect-to-the-server-dialog-box-since-10-12-4
-    defaults write /Library/Preferences/com.apple.NetworkAuthorization AllowUnknownServers -bool YES
+    # 
     sleep 1s
 	echo "/Volumes/$homeSharePoint not mounted. Is homeshare on datastore? " | timestamp >> $logFile
 	# Before knowledge of the above defaults command, it was believed that if the original mount attempt on a datastore volume failed then it would ask for confirmation before attempting to reconnect, which we couldn't bypass.
@@ -193,6 +199,9 @@ then
 else
 	echo "/Volumes/$homeSharePoint already mounted." | timestamp >> $logFile
 fi
+
+
+########## DESKTOP SECTION ##########
 
 # Check to see if Desktop folder within homespace exists
 echo "Checking to see if Desktop folder in homespace exists" | timestamp >> $logFile
@@ -240,6 +249,158 @@ else
     echo "Not found."
 fi
 '
+
+########## PICTURES SECTION ##########
+
+# Check to see if Pictures folder within homespace exists
+echo "Checking to see if Pictures folder in homespace exists" | timestamp >> $logFile
+if [ ! -d /Volumes/$homeSharePoint/$homeSharePath/Pictures ]
+then
+	echo "Pictures folder on homespace does not exist. Creating folder…" | timestamp >> $logFile
+	mkdir /Volumes/$homeSharePoint/$homeSharePath/Pictures
+	chown $NetUser:staff /Volumes/$homeSharePoint/$homeSharePath/Pictures
+else
+	echo "Pictures folder on server already exists. Moving on..." | timestamp >> $logFile
+fi
+
+# Check to see if a Pictures folder or alias exists. If so then delete
+echo "Checking to see if local Pictures already exists..." | timestamp >> $logFile
+if [ -d /Users/${NetUser}/Pictures ] || [ -L /Users/${NetUser}/Pictures ]
+then
+    if [ -L /Users/${NetUser}/Pictures ]
+    then
+        echo "Link already exists. Removing so we can recreate." | timestamp >> $logFile
+        rm -vf /Users/${NetUser}/Pictures >> $logFile
+    else
+        echo "Local Pictures folder exists. Deleting…" | timestamp >> $logFile
+        rm -vdfR /Users/${NetUser}/Pictures >> $logFile
+    fi
+else
+   echo "Local Pictures folder does not exist." | timestamp >> $logFile 
+fi
+
+sleep 1s
+
+# Create link to Pictures folder on Homespace
+echo "Creating link to Pictures folder on homespace...." | timestamp >> $logFile
+ln -sv /Volumes/$homeSharePoint/$homeSharePath/Pictures /Users/$NetUser/Pictures >> $logFile
+# Set the Pictures icon
+python -c 'import Cocoa; Cocoa.NSWorkspace.sharedWorkspace().setIcon_forFile_options_(Cocoa.NSImage.alloc().initWithContentsOfFile_("/System/Library/CoreServices/CoreTypes.bundle/Contents/Resources/PicturesFolderIcon.icns"), "/Users/$NetUser/Pictures", 0)'
+
+# The following if statement was to check for nested Pictures links, however this may cause issues if for some reason the user has setup on purpose nested links (can't think why, but it's possible). We don't want to delete users data so commenting out just now.
+: '
+echo "Checking for nested duplicate symlink."
+if [ -L /Users/${NetUser}/Pictures/Pictures ]
+then
+    echo "Found nested Pictures symlink. Removing." | timestamp >> $logFile
+    rm -fv /Users/${NetUser}/Pictures/Pictures >> $logFile
+else
+    echo "Not found."
+fi
+'
+
+
+########## MUSIC SECTION ##########
+
+# Check to see if Music folder within homespace exists
+echo "Checking to see if Music folder in homespace exists" | timestamp >> $logFile
+if [ ! -d /Volumes/$homeSharePoint/$homeSharePath/Music ]
+then
+	echo "Music folder on homespace does not exist. Creating folder…" | timestamp >> $logFile
+	mkdir /Volumes/$homeSharePoint/$homeSharePath/Music
+	chown $NetUser:staff /Volumes/$homeSharePoint/$homeSharePath/Music
+else
+	echo "Music folder on server already exists. Moving on..." | timestamp >> $logFile
+fi
+
+# Check to see if a Music folder or alias exists. If so then delete
+echo "Checking to see if local Music already exists..." | timestamp >> $logFile
+if [ -d /Users/${NetUser}/Music ] || [ -L /Users/${NetUser}/Music ]
+then
+    if [ -L /Users/${NetUser}/Music ]
+    then
+        echo "Link already exists. Removing so we can recreate." | timestamp >> $logFile
+        rm -vf /Users/${NetUser}/Music >> $logFile
+    else
+        echo "Local Music folder exists. Deleting…" | timestamp >> $logFile
+        rm -vdfR /Users/${NetUser}/Music >> $logFile
+    fi
+else
+   echo "Local Music folder does not exist." | timestamp >> $logFile 
+fi
+
+sleep 1s
+
+# Create link to Music folder on Homespace
+echo "Creating link to Music folder on homespace...." | timestamp >> $logFile
+ln -sv /Volumes/$homeSharePoint/$homeSharePath/Music /Users/$NetUser/Music >> $logFile
+# Set the Music icon
+python -c 'import Cocoa; Cocoa.NSWorkspace.sharedWorkspace().setIcon_forFile_options_(Cocoa.NSImage.alloc().initWithContentsOfFile_("/System/Library/CoreServices/CoreTypes.bundle/Contents/Resources/MusicFolderIcon.icns"), "/Users/$NetUser/Music", 0)'
+
+# The following if statement was to check for nested Music links, however this may cause issues if for some reason the user has setup on purpose nested links (can't think why, but it's possible). We don't want to delete users data so commenting out just now.
+: '
+echo "Checking for nested duplicate symlink."
+if [ -L /Users/${NetUser}/Music/Music ]
+then
+    echo "Found nested Music symlink. Removing." | timestamp >> $logFile
+    rm -fv /Users/${NetUser}/Music/Music >> $logFile
+else
+    echo "Not found."
+fi
+'
+
+
+########## MOVIES SECTION ##########
+
+# Check to see if Movies folder within homespace exists
+echo "Checking to see if Movies folder in homespace exists" | timestamp >> $logFile
+if [ ! -d /Volumes/$homeSharePoint/$homeSharePath/Movies ]
+then
+	echo "Movies folder on homespace does not exist. Creating folder…" | timestamp >> $logFile
+	mkdir /Volumes/$homeSharePoint/$homeSharePath/Movies
+	chown $NetUser:staff /Volumes/$homeSharePoint/$homeSharePath/Movies
+else
+	echo "Movies folder on server already exists. Moving on..." | timestamp >> $logFile
+fi
+
+# Check to see if a Movies folder or alias exists. If so then delete
+echo "Checking to see if local Movies already exists..." | timestamp >> $logFile
+if [ -d /Users/${NetUser}/Movies ] || [ -L /Users/${NetUser}/Movies ]
+then
+    if [ -L /Users/${NetUser}/Movies ]
+    then
+        echo "Link already exists. Removing so we can recreate." | timestamp >> $logFile
+        rm -vf /Users/${NetUser}/Movies >> $logFile
+    else
+        echo "Local Movies folder exists. Deleting…" | timestamp >> $logFile
+        rm -vdfR /Users/${NetUser}/Movies >> $logFile
+    fi
+else
+   echo "Local Movies folder does not exist." | timestamp >> $logFile 
+fi
+
+sleep 1s
+
+# Create link to Movies folder on Homespace
+echo "Creating link to Movies folder on homespace...." | timestamp >> $logFile
+ln -sv /Volumes/$homeSharePoint/$homeSharePath/Movies /Users/$NetUser/Movies >> $logFile
+# Set the Movies icon
+python -c 'import Cocoa; Cocoa.NSWorkspace.sharedWorkspace().setIcon_forFile_options_(Cocoa.NSImage.alloc().initWithContentsOfFile_("/System/Library/CoreServices/CoreTypes.bundle/Contents/Resources/MoviesFolderIcon.icns"), "/Users/$NetUser/Movies", 0)'
+
+# The following if statement was to check for nested Movies links, however this may cause issues if for some reason the user has setup on purpose nested links (can't think why, but it's possible). We don't want to delete users data so commenting out just now.
+: '
+echo "Checking for nested duplicate symlink."
+if [ -L /Users/${NetUser}/Movies/Movies ]
+then
+    echo "Found nested Movies symlink. Removing." | timestamp >> $logFile
+    rm -fv /Users/${NetUser}/Movies/Movies >> $logFile
+else
+    echo "Not found."
+fi
+'
+
+
+########## DOCUMENTS SECTION ##########
 
 # Check to see if local Documents folder exists. If so then delete.
 if [ -d /Users/$NetUser/Documents ]
