@@ -1,0 +1,19 @@
+#!/bin/bash
+
+###################################################################
+#
+# Script to enable opening a specific URL in the default browser upon login.
+#
+# Last Changed: "Tue  7 Aug 2018 13:44:19 BST"
+# Version: 0.1
+# Origin: https://github.com/UoE-macOS/jss.git
+# Released by JSS User: ganders1
+#
+##################################################################
+
+HelpURL="/Library/MacSD/WelcomePage.url"
+echo '[InternetShortcut]' > "$HelpURL"
+echo -n 'URL=' >> "$HelpURL"
+echo "$4" >> "$HelpURL"
+
+exit 0;
