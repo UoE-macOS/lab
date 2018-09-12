@@ -1,0 +1,13 @@
+#!/bin/bash
+#######################################################################
+#
+# Labmon Logout
+#
+#######################################################################
+NETBIOSNAME=`dsconfigad -show | grep 'Computer Account' | tr 'a-z' 'A-Z' | awk -F '=' '{print $2}' | tr -d ' ' | tr -d '\r$'`
+McName="${NETBIOSNAME}"
+user=`python -c 'from SystemConfiguration import SCDynamicStoreCopyConsoleUser; import sys; username = (SCDynamicStoreCopyConsoleUser(None, None, None) or [None])[0]; username = [username,""][username in [u"loginwindow", None, u""]]; sys.stdout.write(username + "\n");'`
+LabmonLogoutURL=$(echo http://labmon.ucs.ed.ac.uk/labstats/Logoff15.aspx?McName=$McName\&Username=$user)
+curl "${LabmonLoginURL}"
+
+exit 0;
