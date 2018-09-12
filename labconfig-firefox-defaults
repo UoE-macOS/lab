@@ -1,0 +1,59 @@
+#!/bin/bash
+
+# Specify locations for files
+mozilla_config="/Applications/Firefox.app/Contents/Resources/mozilla.cfg"
+auto_config="/Applications/Firefox.app/Contents/Resources/defaults/pref/autoconfig.js"
+override_config="/Applications/Firefox.app/Contents/Resources/browser/override.ini"
+
+# Set homepage
+homepage_URL="https://www.ed.ac.uk"
+
+# In the interest of reliability, we should probably check firefox exists on the machine first!
+firefox_path="/Applications/Firefox.app"
+
+if [ ! -d "$firefox_path" ]
+then
+    echo 'Cannot find Firefox in /Applications. Quiting script.'
+    exit 0;
+fi
+
+echo "Found Firefox app. Creating config files..."
+# For just now, if Firefox config files already exist then delete
+if [ -f "$mozilla_config" ]
+then
+    rm -f $mozilla_config
+fi
+
+if [ -f "$auto_config" ]
+then
+    rm -f $auto_config
+fi
+
+if [ -f "$override_config" ]
+then
+	rm -f $override_config
+fi
+
+# Create the 3 config files
+cat <<EOF > $auto_config
+// Any comment. You must start the file with a single-line comment!
+pref("general.config.filename", "mozilla.cfg");
+pref("general.config.obscure_value", 0);
+EOF
+
+cat <<EOF > $mozilla_config
+// Any comment. You must start the file with a single-line comment!
+defaultPref("browser.startup.homepage","data:text/plain,browser.startup.homepage=${homepage_URL}");
+defaultPref("browser.startup.homepage_override.mstone","ignore");
+defaultPref("browser.rights.3.shown", true);
+defaultPref("browser.shell.checkDefaultBrowser", false)
+EOF
+
+cat <<EOF > $override_config
+[XRE]
+EnableProfileMigrator=0
+EOF
+
+echo "Done."
+
+exit 0;
