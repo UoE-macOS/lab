@@ -1,0 +1,16 @@
+#!/bin/bash
+
+# Check for the Avid Application Manager being installed and disable it from running.
+
+if [ -d /Applications/Avid/Application\ Manager/AvidApplicationManager.app ]; then
+
+	echo "Avid Application Manager is installed. Stopping it and deleting its LaunchAgent."
+ 
+    processPID=`ps -A | grep -m1 AvidApplicationManager | awk '{print $1}'`
+
+	kill $processPID
+    
+    rm -f /Library/LaunchAgents/com.avid.ApplicationManager.plist
+fi
+
+exit 0;
