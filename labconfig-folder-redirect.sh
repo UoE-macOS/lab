@@ -9,7 +9,7 @@
 # Date: "Tue 14 Aug 2018 15:56:14 BST"
 # Version: 0.2
 # Origin: https://github.com/UoE-macOS/lab.git
-# Released by JSS User: ganders1
+# Released by JSS User: rcoleman
 #
 ##################################################################
 
@@ -76,7 +76,7 @@ attempt_mount() {
 
 # Function to return if share is mounted
 check_mount() {
-    if [ -d "/Volumes/$1" ] || [ -d /Volumes/$NetUser ];
+    if [ -d "/Volumes/$1" ] || [ -d /Volumes/${NetUser} ];
     then
     	# Share is mounted
     	retval=0
@@ -88,27 +88,27 @@ check_mount() {
 }
 
 # Log username
-echo "Logged in user is $NetUser" | timestamp >> $logFile
+echo "Logged in user is ${NetUser}" | timestamp >> $logFile
 
 # If the user does not exist or user is unknown
 if [ -z "$(get_school ${NetUser})" ] || [ "$(get_school ${NetUser})" == "Unknown" ]
 #  Then most likely not an AD account. Exit script as no redirection can be performed
 then
 	echo "Cannot redirect folders - most likely because of one of the following: " | timestamp >> $logFile
-	echo "1. $NetUser is a local account." | timestamp >> $logFile
+	echo "1. ${NetUser} is a local account." | timestamp >> $logFile
 	echo "2. The logged in user does not have an associated school code." | timestamp >> $logFile
 	echo "3. Active Directory is not reachable." | timestamp >> $logFile
 	echo "Quitting folder redirection script." | timestamp >> $logFile
 	exit 0;
 # Else uun is valid
 else
-	echo "$NetUser appears to be a valid AD account" | timestamp >> $logFile
+	echo "${NetUser} appears to be a valid AD account" | timestamp >> $logFile
 fi
 
 # Get homepath for uun and echo to log
 homePath=`dscl localhost -read "/Active Directory/ED/All Domains/Users/${NetUser}" | grep 'SMBHome:' | awk '{print $2}'`
 echo 'Do we have a homepath?' | timestamp >> $logFile # For debugging purposes
-echo "$NetUser home path is ${homePath}" | timestamp >> $logFile # For debugging purposes
+echo "${NetUser} home path is ${homePath}" | timestamp >> $logFile # For debugging purposes
 sleep 1s
 # If no homepath is returned then try again. Give it 5 attempts
 if [ -z ${homePath} ]
@@ -134,7 +134,7 @@ then
 	fi
 fi
 
-echo "$NetUser home path is ${homePath}" | timestamp >> $logFile
+echo "${NetUser} home path is ${homePath}" | timestamp >> $logFile
 
 # Switch the slashes to make mac friendly and echo Home directory
 #homeDirectory="`echo $homePath | tr '\\' '/'`"
@@ -150,7 +150,8 @@ homeSharePoint=`echo $homeDirectory | awk -F "/" '{print $4}'`
 echo "Home sharepoint is $homeSharePoint" | timestamp >> $logFile
 
 # Extract path after home sharepoint
-tempHomePath=`echo $homeDirectory | awk -F "/" '{for(i=5;i<=NF;i++) print $i}'` 
+tempHomePath=`echo $homeDirectory | awk -F "/" '{for(i=5;i<=NF;i++) print $i}'`
+echo ${tempHomePath} | timestamp >> $logFile
 homeSharePath=`echo $tempHomePath | tr ' ' '/'`
 echo "Homeshare path is $homeSharePath" | timestamp >> $logFile
 
@@ -209,7 +210,7 @@ if [ ! -d /Volumes/$homeSharePoint/$homeSharePath/Desktop ]
 then
 	echo "Desktop folder on homespace does not exist. Creating folder…" | timestamp >> $logFile
 	mkdir /Volumes/$homeSharePoint/$homeSharePath/Desktop
-	chown $NetUser:staff /Volumes/$homeSharePoint/$homeSharePath/Desktop
+	chown ${NetUser}:staff /Volumes/$homeSharePoint/$homeSharePath/Desktop
 else
 	echo "Desktop folder on server already exists. Moving on..." | timestamp >> $logFile
 fi
@@ -234,9 +235,9 @@ sleep 1s
 
 # Create link to Desktop folder on Homespace
 echo "Creating link to Desktop folder on homespace...." | timestamp >> $logFile
-ln -sv /Volumes/$homeSharePoint/$homeSharePath/Desktop /Users/$NetUser/Desktop >> $logFile
+ln -sv /Volumes/$homeSharePoint/$homeSharePath/Desktop /Users/${NetUser}/Desktop >> $logFile
 # Set the Desktop icon
-python -c 'import Cocoa; Cocoa.NSWorkspace.sharedWorkspace().setIcon_forFile_options_(Cocoa.NSImage.alloc().initWithContentsOfFile_("/System/Library/CoreServices/CoreTypes.bundle/Contents/Resources/DesktopFolderIcon.icns"), "/Users/$NetUser/Desktop", 0)'
+python -c 'import Cocoa; Cocoa.NSWorkspace.sharedWorkspace().setIcon_forFile_options_(Cocoa.NSImage.alloc().initWithContentsOfFile_("/System/Library/CoreServices/CoreTypes.bundle/Contents/Resources/DesktopFolderIcon.icns"), "/Users/${NetUser}/Desktop", 0)'
 
 # The following if statement was to check for nested Desktop links, however this may cause issues if for some reason the user has setup on purpose nested links (can't think why, but it's possible). We don't want to delete users data so commenting out just now.
 : '
@@ -258,7 +259,7 @@ if [ ! -d /Volumes/$homeSharePoint/$homeSharePath/Pictures ]
 then
 	echo "Pictures folder on homespace does not exist. Creating folder…" | timestamp >> $logFile
 	mkdir /Volumes/$homeSharePoint/$homeSharePath/Pictures
-	chown $NetUser:staff /Volumes/$homeSharePoint/$homeSharePath/Pictures
+	chown ${NetUser}:staff /Volumes/$homeSharePoint/$homeSharePath/Pictures
 else
 	echo "Pictures folder on server already exists. Moving on..." | timestamp >> $logFile
 fi
@@ -283,9 +284,9 @@ sleep 1s
 
 # Create link to Pictures folder on Homespace
 echo "Creating link to Pictures folder on homespace...." | timestamp >> $logFile
-ln -sv /Volumes/$homeSharePoint/$homeSharePath/Pictures /Users/$NetUser/Pictures >> $logFile
+ln -sv /Volumes/$homeSharePoint/$homeSharePath/Pictures /Users/${NetUser}/Pictures >> $logFile
 # Set the Pictures icon
-python -c 'import Cocoa; Cocoa.NSWorkspace.sharedWorkspace().setIcon_forFile_options_(Cocoa.NSImage.alloc().initWithContentsOfFile_("/System/Library/CoreServices/CoreTypes.bundle/Contents/Resources/PicturesFolderIcon.icns"), "/Users/$NetUser/Pictures", 0)'
+python -c 'import Cocoa; Cocoa.NSWorkspace.sharedWorkspace().setIcon_forFile_options_(Cocoa.NSImage.alloc().initWithContentsOfFile_("/System/Library/CoreServices/CoreTypes.bundle/Contents/Resources/PicturesFolderIcon.icns"), "/Users/${NetUser}/Pictures", 0)'
 
 # The following if statement was to check for nested Pictures links, however this may cause issues if for some reason the user has setup on purpose nested links (can't think why, but it's possible). We don't want to delete users data so commenting out just now.
 : '
@@ -308,7 +309,7 @@ if [ ! -d /Volumes/$homeSharePoint/$homeSharePath/Music ]
 then
 	echo "Music folder on homespace does not exist. Creating folder…" | timestamp >> $logFile
 	mkdir /Volumes/$homeSharePoint/$homeSharePath/Music
-	chown $NetUser:staff /Volumes/$homeSharePoint/$homeSharePath/Music
+	chown ${NetUser}:staff /Volumes/$homeSharePoint/$homeSharePath/Music
 else
 	echo "Music folder on server already exists. Moving on..." | timestamp >> $logFile
 fi
@@ -333,9 +334,9 @@ sleep 1s
 
 # Create link to Music folder on Homespace
 echo "Creating link to Music folder on homespace...." | timestamp >> $logFile
-ln -sv /Volumes/$homeSharePoint/$homeSharePath/Music /Users/$NetUser/Music >> $logFile
+ln -sv /Volumes/$homeSharePoint/$homeSharePath/Music /Users/${NetUser}/Music >> $logFile
 # Set the Music icon
-python -c 'import Cocoa; Cocoa.NSWorkspace.sharedWorkspace().setIcon_forFile_options_(Cocoa.NSImage.alloc().initWithContentsOfFile_("/System/Library/CoreServices/CoreTypes.bundle/Contents/Resources/MusicFolderIcon.icns"), "/Users/$NetUser/Music", 0)'
+python -c 'import Cocoa; Cocoa.NSWorkspace.sharedWorkspace().setIcon_forFile_options_(Cocoa.NSImage.alloc().initWithContentsOfFile_("/System/Library/CoreServices/CoreTypes.bundle/Contents/Resources/MusicFolderIcon.icns"), "/Users/${NetUser}/Music", 0)'
 
 # The following if statement was to check for nested Music links, however this may cause issues if for some reason the user has setup on purpose nested links (can't think why, but it's possible). We don't want to delete users data so commenting out just now.
 : '
@@ -358,7 +359,7 @@ if [ ! -d /Volumes/$homeSharePoint/$homeSharePath/Movies ]
 then
 	echo "Movies folder on homespace does not exist. Creating folder…" | timestamp >> $logFile
 	mkdir /Volumes/$homeSharePoint/$homeSharePath/Movies
-	chown $NetUser:staff /Volumes/$homeSharePoint/$homeSharePath/Movies
+	chown ${NetUser}:staff /Volumes/$homeSharePoint/$homeSharePath/Movies
 else
 	echo "Movies folder on server already exists. Moving on..." | timestamp >> $logFile
 fi
@@ -383,9 +384,9 @@ sleep 1s
 
 # Create link to Movies folder on Homespace
 echo "Creating link to Movies folder on homespace...." | timestamp >> $logFile
-ln -sv /Volumes/$homeSharePoint/$homeSharePath/Movies /Users/$NetUser/Movies >> $logFile
+ln -sv /Volumes/$homeSharePoint/$homeSharePath/Movies /Users/${NetUser}/Movies >> $logFile
 # Set the Movies icon
-python -c 'import Cocoa; Cocoa.NSWorkspace.sharedWorkspace().setIcon_forFile_options_(Cocoa.NSImage.alloc().initWithContentsOfFile_("/System/Library/CoreServices/CoreTypes.bundle/Contents/Resources/MoviesFolderIcon.icns"), "/Users/$NetUser/Movies", 0)'
+python -c 'import Cocoa; Cocoa.NSWorkspace.sharedWorkspace().setIcon_forFile_options_(Cocoa.NSImage.alloc().initWithContentsOfFile_("/System/Library/CoreServices/CoreTypes.bundle/Contents/Resources/MoviesFolderIcon.icns"), "/Users/${NetUser}/Movies", 0)'
 
 # The following if statement was to check for nested Movies links, however this may cause issues if for some reason the user has setup on purpose nested links (can't think why, but it's possible). We don't want to delete users data so commenting out just now.
 : '
@@ -403,16 +404,16 @@ fi
 ########## DOCUMENTS SECTION ##########
 
 # Check to see if local Documents folder exists. If so then delete.
-if [ -d /Users/$NetUser/Documents ]
+if [ -d /Users/${NetUser}/Documents ]
 then
     echo "Local documents folder exists. Deleting…" | timestamp >> $logFile
-    rm -vdfR /Users/$NetUser/Documents >> $logFile
+    rm -vdfR /Users/${NetUser}/Documents >> $logFile
     echo "Creating link to homespace..." | timestamp >> $logFile
 else
     echo "Local Documents folder does not exist. Creating link..." | timestamp >> $logFile	
 fi
 
-rm -vdfR /Users/$NetUser/Documents
+rm -vdfR /Users/${NetUser}/Documents
 # Create link to root of the homespace, calling it "Documents". Has to be done using an alias so Finder shortcut can be placed in sidebar - so Applescript is used
 osascript <<EOF
     set p to "/Volumes/$homeSharePoint/$homeSharePath" 
@@ -423,7 +424,7 @@ osascript <<EOF
 	end tell
 EOF
 # Set the Documents icon
-python -c 'import Cocoa; Cocoa.NSWorkspace.sharedWorkspace().setIcon_forFile_options_(Cocoa.NSImage.alloc().initWithContentsOfFile_("/System/Library/CoreServices/CoreTypes.bundle/Contents/Resources/DocumentsFolderIcon.icns"), "/Users/$NetUser/Documents", 0)'
+python -c 'import Cocoa; Cocoa.NSWorkspace.sharedWorkspace().setIcon_forFile_options_(Cocoa.NSImage.alloc().initWithContentsOfFile_("/System/Library/CoreServices/CoreTypes.bundle/Contents/Resources/DocumentsFolderIcon.icns"), "/Users/${NetUser}/Documents", 0)'
 
 desktopMount="/Volumes/${homeSharePoint}/${homeSharePath}/Desktop"
 echo "Full path to Desktop is $desktopMount" | timestamp >> $logFile
@@ -432,21 +433,22 @@ echo "Full path to Documents is $documentsMount" | timestamp >> $logFile
 
 echo "Attempting to remove current local Desktop and local Documents sidebar entries..." | timestamp >> $logFile
 # Remove current desktop and documents sidebar entries, along with network home folder if it exists.
-python - <<EOF
-import sys
-sys.path.append('/usr/local/python')
-from FinderSidebarEditor import FinderSidebar                  # Import the module
-sidebar = FinderSidebar()                                      # Create a Finder sidebar instance to act on.
-sidebar.remove("Desktop")                                        # Remove Desktop favourite 
-sidebar.remove("Documents")									# Remove Documents favourite
-sidebar.remove("$NetUser")								# Remove shortcut to Network Home as it's recreated anyway
-EOF
+#	python - <<EOF
+#import sys
+#sys.path.append('/usr/local/python')
+#from FinderSidebarEditor import FinderSidebar                  # Import the module
+#sidebar = FinderSidebar()                                      # Create a Finder sidebar instance to act on.
+#sidebar.remove("Desktop")                                        # Remove Desktop favourite 
+#sidebar.remove("Documents")									# Remove Documents favourite
+#sidebar.remove("$NetUser")								# Remove shortcut to Network Home as it's recreated anyway
+#EOF
 
 killall Finder
 sleep 1s
 
 # Add the entry to the sidebar
-add_FavoriteItems() { 
+add_FavoriteItems() {
+echo "Add Documents sidebar entry." | timestamp >> $logFile
 if [ -d /Volumes/${homeSharePoint} ]; then
     python - <<EOF
 import sys
@@ -460,7 +462,8 @@ EOF
  else
  	echo "Documents sidebar shortcut failed." | timestamp >> $logFile
 fi
-	
+
+echo "Add Desktop sidebar entry." | timestamp >> $logFile	
 if [ -d /Volumes/${homeSharePoint} ]; then
     python - <<EOF
 import sys
@@ -475,12 +478,14 @@ else
 	echo "Desktop sidebar shortcut failed" | timestamp >> $logFile
 fi
 
+echo "Add home network folder sidebar entry." | timestamp >> $logFile
 if [ -d /Volumes/${homeSharePoint} ]; then
     python - <<EOF
 import sys
 sys.path.append('/usr/local/python')
-from FinderSidebarEditor import FinderSidebar                  # Import the module
+from FinderSidebarEditor import FinderSidebar                 # Import the module
 sidebar = FinderSidebar()                                      # Create a Finder sidebar instance to act on.
+sidebar.remove("$NetUser")
 sidebar.add("/Volumes/$homeSharePoint/$homeSharePath")         # Add the UUN network home favourite to sidebar
 EOF
 else
