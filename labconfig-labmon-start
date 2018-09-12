@@ -1,0 +1,23 @@
+#!/bin/bash
+#######################################################################
+#
+# Labmon Startup
+#
+#######################################################################
+NOW=`date "+%d/%m/%Y%%20%H:%M:%S"`
+OS=`uname | tr 'a-z' 'A-Z' | sed 's/DARWIN/MACOS%20X/'`
+MacOSVersion=`defaults read /System/Library/CoreServices/SystemVersion ProductVersion`
+ActiveAdapter=`route get ed.ac.uk | grep interface | awk '{print $2}'`
+MacAddr=$(ifconfig $ActiveAdapter ether | awk '/ether/ {print $NF}')
+IP=$(ifconfig $ActiveAdapter | grep 'inet ' | awk '{print $2}')
+MachineADLoc="ed.ac.uk/UoESD/Resources/LTS/Computers"
+Time=`head -1 /var/log/jamf.log | awk '{print $4}'`
+MacLastBuild="03/09/2018%20${Time}"
+NETBIOSNAME=`dsconfigad -show | grep 'Computer Account' | tr 'a-z' 'A-Z' | awk -F '=' '{print $2}' | tr -d ' ' | tr -d '\r$'`
+McName="${NETBIOSNAME}"
+user=`python -c 'from SystemConfiguration import SCDynamicStoreCopyConsoleUser; import sys; username = (SCDynamicStoreCopyConsoleUser(None, None, None) or [None])[0]; username = [username,""][username in [u"loginwindow", None, u""]]; sys.stdout.write(username + "\n");'`
+
+LabmonStartURL=$(echo http://labmon.ucs.ed.ac.uk/labstats/StartupLogon15.aspx?McName=$McName\&NetBIOSName=$NETBIOSNAME\&IP=$IP\&MAC=$MAC\&MacBoottime=$NOW\&MacLastBuild=$MacLastBuild\&MacOSVersion=$MacOSVersion\&MachineADLoc=$MachineADLoc\&Username=SYSTEM\&SessionOS=$OS)
+curl "${LabmonStartURL}"
+
+exit 0;
