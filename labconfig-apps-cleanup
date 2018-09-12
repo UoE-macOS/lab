@@ -33,13 +33,15 @@ Preview.app
 QuickTime Player.app
 Reminders.app
 Safari.app
+Siri.app
 Stickies.app
 System Preferences.app
 TextEdit.app
 Time Machine.app
 Utilities
 iBooks.app
-iTunes.app"
+iTunes.app
+Self Service.app"
 
 echo "$Clean_Apps" > /tmp/clean_apps.txt
 
@@ -61,8 +63,8 @@ for application in "${Apps_Installed[@]}"; do
 		case "$application" in
     	"Sophos Anti-Virus.app")
        		# Run Sophos' uninstall process to allow a clean version to be applied.
-	        SophosInstaller=`find "/Library/Application Support/Sophos" -type d -name "Installer.app"`
-	        "${SophosInstaller}"/Contents/MacOS/tools/InstallationDeployer --remove
+	        SophosInstaller=`find "/Library/Application Support/Sophos" -type d -name "InstallationDeployer"`
+	        "${SophosInstaller}" --remove
             # Scrub the autoupdate cache and lockfile
             rm -f /Library/Caches/com.sophos.sau/CID/cidsync.upd
             rm -f /Library/Caches/com.sophos.sau/sophosautoupdate.plist
@@ -75,16 +77,31 @@ for application in "${Apps_Installed[@]}"; do
     			rm -dfR "/Applications/${application}"
     			rm -dfR "/Library/Internet Plug-Ins/AdobePDFViewer.plugin"
     		fi
+    		if [ "${application}" == "Adobe Reader.app" ]; then
+    			rm -dfR "/Applications/${application}"
+    			rm -dfR "/Library/Internet Plug-Ins/AdobePDFViewer.plugin"
+    		fi
     		# Possibly need https://helpx.adobe.com/uk/creative-cloud/kb/cc-cleaner-tool-installation-problems.html for CC apps
     		;;
         Microsoft*)
         	if [ "${application}" == "Microsoft Silverlight" ]; then
             	rm -dfR "/Applications/${application}"
+                rm -dfR "/Library/Internet Plug-Ins/Silverlight.plugin"
             fi
             if [ "${application}" == "Microsoft Lync.app" ]; then
             	rm -dfR "/Applications/${application}"
             fi
             # Office can be upgraded in-place
+            ;;
+            
+        "Pro Tools.app")
+        	# Do nothing for now.
+            ;;
+        Sibelius*)
+        	# Do nothing for now.
+            ;;
+        Avid*)
+        	# Do nothing for now.
             ;;
     	*) 
     		rm -Rdf "/Applications/${application}"
@@ -94,10 +111,21 @@ for application in "${Apps_Installed[@]}"; do
 done
 IFS="$oIFS"
 
+# Delete Java
+rm -fR "/Library/Internet Plug-Ins/JavaAppletPlugin.plugin" 
+rm -fR "/Library/PreferencePanes/JavaControlPanel.prefPane"
+
 # Delete any existing launchagents
 rm -f /Library/LaunchAgents/*
 
 # Delete any legacy startupitems
 rm -dfR /Library/StartupItems/*
+
+# uninstall haskell osx
+rm -fR /Library/Frameworks/GHC.framework
+rm -fR /Library/Frameworks/HaskellPlatform.framework
+rm -fR /Library/Haskell
+
+# Delete Internet plug-ins?
 
 exit 0;
