@@ -1,0 +1,31 @@
+#!/bin/bash
+
+
+# /* Taken from LCFG Mac SD script - clear_folders.sh */
+
+# Clean up the /var/folders directory, to avoid it growing huge
+
+# We use the numeric gid of 1200627079 as we get inconsistent results
+# from using "ED\Domain Users" and/or "Domain Users" on different
+# machines.  This number is generated from the ObjectGUID for the
+# Domain Users group in AD, so is the same on all clients.
+find /var/folders/ -gid 1200627079 -delete
+
+
+#User_Name=`python -c 'from SystemConfiguration import SCDynamicStoreCopyConsoleUser; import sys; username = (SCDynamicStoreCopyConsoleUser(None, None, None) or [None])[0]; username = [username,""][username in [u"loginwindow", None, u""]]; sys.stdout.write(username + "\n");'`
+
+
+# Check and delete any non-local users
+
+Users_Array=( `ls /Users | grep -v Shared` )
+for user in "${Users_Array[@]}"
+do
+	User_Local=`dscl . -list /Users | grep "^${user}"`
+	if [ "${user}" == "${User_Local}" ]; then
+		echo "skip user ${user} as they are local."
+	else
+		rm -fR /Users/${user}
+	fi
+done
+
+exit 0;
