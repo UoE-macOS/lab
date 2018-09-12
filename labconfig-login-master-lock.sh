@@ -2,8 +2,8 @@
 
 ######
 #
-# Date: Thu  2 Aug 2018 14:37:21 BST
-# Version: 0.2
+# Date: Wed Sep 12 13:00:09 BST 2018
+# Version: 0.3
 # Author: dsavage
 #
 ######
@@ -89,22 +89,33 @@ echo "Displaying intial jamfHelper message.." | timestamp >> $logFile
 description='This may take a minute, depending on your network speed.
 Please call IS Helpline at 0131 651 5151 if you need assistance.'
 (displayMessage "$description")
-sleep 3s
+sleep 2s
 
+echo "Setting Acrobat to be default pdf handler." | timsetamp >> $logFile
 # set acrobat pro as the default pdf handler if it is installed
 if [ -d /Applications/Adobe\ Acrobat\ DC/Adobe\ Acrobat.app ]; then
 	duti -s com.adobe.Acrobat.Pro pdf all
 fi
 
+# Run custom triggers for browser defaults
+# Chrome
+echo "Setting Chrome defaults..." | timestamp >> $logFile
+/usr/local/jamf/bin/jamf policy -event chromeDefaults
+echo "Setting Firefox defaults..." | timestamp >> $logFile
+# Firefox
+/usr/local/jamf/bin/jamf policy -event firefoxDefaults
+echo "Browser defaults set." | timestamp >> $logFile
+
+
 # Kill this instance of JAMF Helper
 kill jamfhelper
 
-# Run LabMon policy
-echo "Running Labmon policy.." | timestamp >> $logFile
-desc3='LABMON will happen here! …'
-(displayMessage "$desc3")
-sleep 3s
-
+# Run LabMon policy - COMMENTED OUT UNTIL ML LAB IS READY (G.A.)
+#echo "Running Labmon policy.." | timestamp >> $logFile
+#desc3='LABMON will happen here! …'
+#(displayMessage "$desc3")
+#sleep 3s
+/usr/local/jamf/bin/jamf policy -event Labmon-Login > /dev/null 2>&1
 # Kill this instance of JAMF Helper
 kill jamfhelper
 
@@ -114,7 +125,7 @@ descFolderRedirect='Running folder redirection….'
 (displayMessage "$descFolderRedirect")
 # Run custom trigger for folder redirection
 /usr/local/jamf/bin/jamf policy -event Redirect
-sleep 3s
+sleep 2s
 
 # Kill this instance of JAMF Helper
 kill jamfhelper
@@ -123,12 +134,38 @@ kill jamfhelper
 echo "Running Desktop and Dock policy..." | timestamp >> $logFile
 desc2='Configuring the Desktop and Dock….'
 (displayMessage "$desc2")
-# Run custom trigger for desktop image
-/usr/local/jamf/bin/jamf policy -event Desktop
+
 # We need to rework the existing dockutil script, will add additional options later
+echo "Running MacApps custom trigger." | timestamp >> $logFile
 /usr/local/jamf/bin/jamf policy -event MacApps
+echo "Running Dock custom trigger." | timestamp >> $logFile
 /usr/local/jamf/bin/jamf policy -event OADock
-sleep 3s
+# Run custom trigger for desktop image
+echo "Running custom trigger for Desktop image." | timestamp >> $logFile
+/usr/local/jamf/bin/jamf policy -event Desktop
+
+echo "Setting save window expansion." | timestamp >> $logFile
+# Expand the save window
+su $NetUser -c "/usr/bin/defaults write NSGlobalDomain NSNavPanelExpandedStateForSaveMode -bool true"
+su $NetUser -c "/usr/bin/defaults write NSGlobalDomain NSNavPanelExpandedStateForSaveMode2 -bool true"
+
+# Check for App Store prefs' Automatic Update preference being enabled and disable it
+
+AutoUpdateStatus=`defaults read /Library/Preferences/com.apple.SoftwareUpdate.plist AutomaticCheckEnabled`
+
+if [ $AutoUpdateStatus == "1" ]; then
+	echo "Automatic Update preference is enabled. Disabling it..."
+	defaults write /Library/Preferences/com.apple.SoftwareUpdate.plist AutomaticCheckEnabled -bool FALSE
+
+else 
+	echo "Automatic Update preference is not enabled."
+fi
+
+sleep 2s
+
+# Add everyone as an lpoperator so they can unpause print queues
+/usr/sbin/dseditgroup -o edit -a everyone -t group _lpoperator
+
 
 # Kill this instance of JAMF Helper
 kill jamfhelper
@@ -140,11 +177,20 @@ descLogin='Logging in….'
 # Sleep for a few seconds
 sleep 2s
 
+# Open welcome page for OA Labs
+/usr/local/jamf/bin/jamf policy -event welcomePage
+
 echo "Killing all instances of LockScreen and jamfHelper..." | timestamp >> $logFile
 # Kill the LockScreen and the JAMF helper once all login policies have completed
 killall -9 LockScreen
 killall -9 jamfhelper
 
+# kick the login items
+/usr/local/bin/jamf policy -event LoginItem
+
 echo "Done" | timestamp >> $logFile
+
+echo "Trying custom trigger for Desktop image again!" | timestamp >> $logFile
+/usr/local/jamf/bin/jamf policy -event Desktop
 
 exit 0;
