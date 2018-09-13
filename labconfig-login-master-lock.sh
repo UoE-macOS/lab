@@ -2,8 +2,8 @@
 
 ######
 #
-# Date: Wed Sep 12 13:00:09 BST 2018
-# Version: 0.3
+# Date: Wed Sep 13 15:30:09 BST 2018
+# Version: 0.4
 # Author: dsavage
 #
 ######
@@ -94,7 +94,7 @@ sleep 2s
 echo "Setting Acrobat to be default pdf handler." | timsetamp >> $logFile
 # set acrobat pro as the default pdf handler if it is installed
 if [ -d /Applications/Adobe\ Acrobat\ DC/Adobe\ Acrobat.app ]; then
-	duti -s com.adobe.Acrobat.Pro pdf all
+	/usr/local/bin/duti -s com.adobe.Acrobat.Pro pdf all
 fi
 
 # Run custom triggers for browser defaults
