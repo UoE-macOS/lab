@@ -91,7 +91,7 @@ Please call IS Helpline at 0131 651 5151 if you need assistance.'
 (displayMessage "$description")
 sleep 2s
 
-echo "Setting Acrobat to be default pdf handler." | timsetamp >> $logFile
+echo "Setting Acrobat to be default pdf handler." | timestamp >> $logFile
 # set acrobat pro as the default pdf handler if it is installed
 if [ -d /Applications/Adobe\ Acrobat\ DC/Adobe\ Acrobat.app ]; then
 	/usr/local/bin/duti -s com.adobe.Acrobat.Pro pdf all
