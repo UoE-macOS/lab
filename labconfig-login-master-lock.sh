@@ -94,7 +94,8 @@ sleep 2s
 echo "Setting Acrobat to be default pdf handler." | timestamp >> $logFile
 # set acrobat pro as the default pdf handler if it is installed
 if [ -d /Applications/Adobe\ Acrobat\ DC/Adobe\ Acrobat.app ]; then
-	/usr/local/bin/duti -s com.adobe.Acrobat.Pro pdf all
+	# Doesn't seem to play well on 10.13 /usr/local/bin/duti -s com.adobe.Acrobat.Pro pdf all
+    sudo -u ${NetUser} python -c 'from LaunchServices import LSSetDefaultRoleHandlerForContentType; LSSetDefaultRoleHandlerForContentType("com.adobe.pdf", 0x00000002, "com.adobe.Acrobat.Pro")'
 fi
 
 # Run custom triggers for browser defaults
