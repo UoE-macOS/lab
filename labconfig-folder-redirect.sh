@@ -6,10 +6,10 @@
 # 
 # 
 #
-# Date: "Tue 14 Aug 2018 15:56:14 BST"
-# Version: 0.2
+# Date: "Thu Sep 13 15:43:44 BST 2018"
+# Version: 0.3
 # Origin: https://github.com/UoE-macOS/lab.git
-# Released by JSS User: rcoleman
+# Released by JSS User: dsavage
 #
 ##################################################################
 
@@ -235,6 +235,8 @@ sleep 1s
 
 # Create link to Desktop folder on Homespace
 echo "Creating link to Desktop folder on homespace...." | timestamp >> $logFile
+# Try removing the Desktop folder again in case it's re-appeared
+rm -vdfR /Users/${NetUser}/Desktop >> $logFile
 ln -sv /Volumes/$homeSharePoint/$homeSharePath/Desktop /Users/${NetUser}/Desktop >> $logFile
 # Set the Desktop icon
 python -c 'import Cocoa; Cocoa.NSWorkspace.sharedWorkspace().setIcon_forFile_options_(Cocoa.NSImage.alloc().initWithContentsOfFile_("/System/Library/CoreServices/CoreTypes.bundle/Contents/Resources/DesktopFolderIcon.icns"), "/Users/${NetUser}/Desktop", 0)'
@@ -403,28 +405,35 @@ fi
 
 ########## DOCUMENTS SECTION ##########
 
-# Check to see if local Documents folder exists. If so then delete.
-if [ -d /Users/${NetUser}/Documents ]
+# Check to see if Documents folder within homespace exists
+echo "Checking to see if Documents folder in homespace exists" | timestamp >> $logFile
+if [ ! -d /Volumes/$homeSharePoint/$homeSharePath/Documents ]
 then
-    echo "Local documents folder exists. Deleting…" | timestamp >> $logFile
-    rm -vdfR /Users/${NetUser}/Documents >> $logFile
-    echo "Creating link to homespace..." | timestamp >> $logFile
+	echo "Documents folder on homespace does not exist. Creating folder…" | timestamp >> $logFile
+	mkdir /Volumes/$homeSharePoint/$homeSharePath/Documents
+	chown ${NetUser}:staff /Volumes/$homeSharePoint/$homeSharePath/Documents
 else
-    echo "Local Documents folder does not exist. Creating link..." | timestamp >> $logFile	
+	echo "Documents folder on server already exists. Moving on..." | timestamp >> $logFile
 fi
 
-rm -vdfR /Users/${NetUser}/Documents
-# Create link to root of the homespace, calling it "Documents". Has to be done using an alias so Finder shortcut can be placed in sidebar - so Applescript is used
-osascript <<EOF
-    set p to "/Volumes/$homeSharePoint/$homeSharePath" 
-	set q to POSIX file p
-	do shell script "echo " & q & " >> $logFile"
-	tell application "Finder"
-	make new alias file to q at home with properties {name:"Documents"}
-	end tell
-EOF
+# Check to see if a Documents folder or alias exists. If so then delete
+echo "Checking to see if local Documents already exists..." | timestamp >> $logFile
+if [ -d /Users/${NetUser}/Documents ] || [ -L /Users/${NetUser}/Documents ]
+then
+        echo "Local Documents folder or link exists. Deleting…" | timestamp >> $logFile
+        rm -vfR /Users/${NetUser}/Documents >> $logFile
+else
+   echo "Local Documents folder does not exist." | timestamp >> $logFile 
+fi
+
+sleep 1s
+
+# Create link to Documents folder on Homespace
+echo "Creating link to Documents folder on homespace...." | timestamp >> $logFile
+ln -sv /Volumes/$homeSharePoint/$homeSharePath/Documents /Users/${NetUser}/Documents >> $logFile
 # Set the Documents icon
 python -c 'import Cocoa; Cocoa.NSWorkspace.sharedWorkspace().setIcon_forFile_options_(Cocoa.NSImage.alloc().initWithContentsOfFile_("/System/Library/CoreServices/CoreTypes.bundle/Contents/Resources/DocumentsFolderIcon.icns"), "/Users/${NetUser}/Documents", 0)'
+
 
 desktopMount="/Volumes/${homeSharePoint}/${homeSharePath}/Desktop"
 echo "Full path to Desktop is $desktopMount" | timestamp >> $logFile
