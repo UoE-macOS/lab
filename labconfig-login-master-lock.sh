@@ -108,12 +108,14 @@ if [ -d /Applications/Utilities/Adobe\ Creative\ Cloud/ACC/Creative\ Cloud.app ]
 
 echo "Creative Cloud app is running. Stopping it and removing its LaunchAgent." | timestamp >> $logFile
 
-kill -9 $(ps -A | grep "Creative Cloud.app" | grep -v grep | awk -F " " '{print $1}')
-echo "Killed Creative Cloud app process." | timestamp >> $logFile
-launchctl unload -w /Library/LaunchAgents/com.adobe.AdobeCreativeCloud.plist
-echo "Unloaded Creative Cloud LaunchAgent." | timestamp >> $logFile
 rm -f /Library/LaunchAgents/com.adobe.AdobeCreativeCloud.plist
 echo "Deleted Creative Cloud LaunchAgent." | timestamp >> $logFile
+
+kill -9 $(ps -A | grep "Creative Cloud.app" | grep -v grep | awk -F " " '{print $1}')
+echo "Killed Creative Cloud app process." | timestamp >> $logFile
+
+launchctl unload -w /Library/LaunchAgents/com.adobe.AdobeCreativeCloud.plist
+echo "Unloaded Creative Cloud LaunchAgent." | timestamp >> $logFile
 
 fi
 
