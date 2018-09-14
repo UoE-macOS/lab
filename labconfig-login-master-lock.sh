@@ -101,25 +101,6 @@ if [ -d /Applications/Adobe\ Acrobat\ DC/Adobe\ Acrobat.app ]; then
     sudo -u ${NetUser} python -c 'from LaunchServices import LSSetDefaultRoleHandlerForContentType; LSSetDefaultRoleHandlerForContentType("com.adobe.pdf", 0x00000002, "com.adobe.Acrobat.Pro")'
 fi
 
-
-# Check for Adobe’s Creative Cloud app then close it and disable its LaunchAgent to stop it from automatically starting
-
-if [ -d /Applications/Utilities/Adobe\ Creative\ Cloud/ACC/Creative\ Cloud.app ]; then
-
-echo "Creative Cloud app is running. Stopping it and removing its LaunchAgent." | timestamp >> $logFile
-
-rm -f /Library/LaunchAgents/com.adobe.AdobeCreativeCloud.plist
-echo "Deleted Creative Cloud LaunchAgent." | timestamp >> $logFile
-
-kill -9 $(ps -A | grep "Creative Cloud.app" | grep -v grep | awk -F " " '{print $1}')
-echo "Killed Creative Cloud app process." | timestamp >> $logFile
-
-launchctl unload -w /Library/LaunchAgents/com.adobe.AdobeCreativeCloud.plist
-echo "Unloaded Creative Cloud LaunchAgent." | timestamp >> $logFile
-
-fi
-
-
 # Run custom triggers for browser defaults
 # Chrome
 echo "Setting Chrome defaults..." | timestamp >> $logFile
