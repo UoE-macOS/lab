@@ -134,13 +134,13 @@ ANY UNSAVED WORK WILL BE LOST.
 
 # Function for forcing the logout of the Mac.
 Force_Logout () { 
-    echo "******* Restarting machine in 1 minute. *******" | timestamp 2>&1 | tee -a $logFile
+    echo "******* Starting auto-logout process. *******" | timestamp 2>&1 | tee -a $logFile
     # Again, make sure no instance of JamfHelper is running
     echo "******* Killing jamfHelper for the last time before auto-logout *******" | timestamp 2>&1 | tee -a $logFile
     kill_jh
     # Display message to user that computer is going to log out. Message will display for 5 seconds
     echo "Displaying message to auto logout" | timestamp 2>&1 | tee -a $logFile
-    "$jamfHelper" -windowType fs -icon "$LOGO" -heading "Automatic logout after 30 minutes idle." -description "THIS MAC WILL NOW LOGOUT." -timeout 10
+    "$jamfHelper" -windowType utility -icon "$LOGO" -heading "Automatic logout after 30 minutes idle." -description "THIS MAC WILL NOW LOGOUT." -timeout 10
     # kill jamf helper again
     kill_jh
     # Close all open apps
