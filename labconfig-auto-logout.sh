@@ -122,8 +122,7 @@ ANY UNSAVED WORK WILL BE LOST.
         # Echo to log
 		echo "Idle time at end of loop $idletimeMINS" | timestamp 2>&1 | tee -a $logFile
 	done
-    # If the counter is equal to 19 then force the logout. For some reason the idletime increases faster than the counter which was originally set to 20 (most likely because we are dealing with minutes, not seconds).
-    # Setting to 19 to bring it more into line with the idletime. The idletime will still be over 30 minutes. Look at logs for example.
+    # Set Counter to 20
 	if [ $counter == 20 ]; then
 		# kill all apps and restart.
 		Force_Logout
