@@ -5,8 +5,8 @@
 # Script to add applications  to the dock.
 # Utilises - https://github.com/kcrawford/dockutil
 #
-# Last Changed: "Thu Aug 23 16:16:18 BST 2018"
-# Version: 0.6
+# Last Changed: "Tue  9 Oct 2018 14:20:24 BST"
+# Version: 0.7
 # Origin: https://github.com/UoE-macOS/
 # Released by JSS User: ganders1
 #
@@ -103,19 +103,19 @@ if [ -d "/Applications/Adobe Acrobat" ]; then
 fi
 
 echo "Adding Illustrator." | timestamp >> $logFile
-if [ -d "/Applications/Adobe Illustrator CC 2017" ]; then
-	$DOCK_UTIL --add "/Applications/Adobe Illustrator CC 2017/Adobe Illustrator.app" --no-restart $DOCK_PREF
+if [ -d "/Applications/Adobe Illustrator CC 2018" ]; then
+	$DOCK_UTIL --add "/Applications/Adobe Illustrator CC 2018/Adobe Illustrator.app" --no-restart $DOCK_PREF
 fi
 
 
 echo "Adding InDesign." | timestamp >> $logFile
-if [ -d "/Applications/Adobe InDesign CC 2017" ]; then
-	$DOCK_UTIL --add "/Applications/Adobe InDesign CC 2017/Adobe InDesign CC 2017.app" --no-restart $DOCK_PREF
+if [ -d "/Applications/Adobe InDesign CC 2018" ]; then
+	$DOCK_UTIL --add "/Applications/Adobe InDesign CC 2018/Adobe InDesign CC 2018.app" --no-restart $DOCK_PREF
 fi
 
 echo "Adding Photoshop." | timestamp >> $logFile
-if [ -d "/Applications/Adobe Photoshop CC 2017" ]; then
-	$DOCK_UTIL --add "/Applications/Adobe Photoshop CC 2017/Adobe Photoshop CC 2017.app" --no-restart $DOCK_PREF
+if [ -d "/Applications/Adobe Photoshop CC 2018" ]; then
+	$DOCK_UTIL --add "/Applications/Adobe Photoshop CC 2018/Adobe Photoshop CC 2018.app" --no-restart $DOCK_PREF
 fi
 
 echo "Add to display" | timestamp >> $logFile
