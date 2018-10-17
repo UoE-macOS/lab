@@ -176,9 +176,20 @@ sleep 2s
 # Add everyone as an lpoperator so they can unpause print queues
 /usr/sbin/dseditgroup -o edit -a everyone -t group _lpoperator
 
+# Kill this instance of JAMF Helper
+kill jamfhelper
+
+
+# Running local custom login scripts
+echo "Running local login scripts..." | timestamp >> $logFile
+descLocalScripts='Running local login scripts.'
+(displayMessage "$descLocalScripts")
+# Run custom trigger for local login scripts
+/usr/local/jamf/bin/jamf policy -event CustomLogin
 
 # Kill this instance of JAMF Helper
 kill jamfhelper
+
 
 echo "All custom login policies run." | timestamp >> $logFile
 descLogin='Logging in.'
