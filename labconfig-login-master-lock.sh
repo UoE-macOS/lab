@@ -2,8 +2,8 @@
 
 ######
 #
-# Date: Fri 14 Sep 2018 12:00:41 BST
-# Version: 0.5
+# Date: Wed 17 Oct 2018 09:16:33 BST
+# Version: 0.6
 # Author: ganders1
 #
 ######
@@ -101,6 +101,12 @@ if [ -d /Applications/Adobe\ Acrobat\ DC/Adobe\ Acrobat.app ]; then
     sudo -u ${NetUser} python -c 'from LaunchServices import LSSetDefaultRoleHandlerForContentType; LSSetDefaultRoleHandlerForContentType("com.adobe.pdf", 0x00000002, "com.adobe.Acrobat.Pro")'
 fi
 
+
+# Set lab screensaver time beyond the auto-logout time so that message can remain visible.
+echo "Setting lab screensaver time..." | timestamp >> $logFile
+/usr/local/jamf/bin/jamf policy -event Set-Screensaver-Time
+
+
 # Run custom triggers for browser defaults
 # Chrome
 echo "Setting Chrome defaults..." | timestamp >> $logFile
@@ -116,7 +122,7 @@ kill jamfhelper
 
 # Run LabMon policy - COMMENTED OUT UNTIL ML LAB IS READY (G.A.)
 #echo "Running Labmon policy.." | timestamp >> $logFile
-#desc3='LABMON will happen here! …'
+#desc3='LABMON will happen here!'
 #(displayMessage "$desc3")
 #sleep 3s
 /usr/local/jamf/bin/jamf policy -event Labmon-Login > /dev/null 2>&1
@@ -125,7 +131,7 @@ kill jamfhelper
 
 # Run folder redirection policy
 echo "Running folder redirection policy..." | timestamp >> $logFile
-descFolderRedirect='Running folder redirection….'
+descFolderRedirect='Running folder redirection.'
 (displayMessage "$descFolderRedirect")
 # Run custom trigger for folder redirection
 /usr/local/jamf/bin/jamf policy -event Redirect
@@ -136,7 +142,7 @@ kill jamfhelper
 
 # Run Desktop and Dock policy
 echo "Running Desktop and Dock policy..." | timestamp >> $logFile
-desc2='Configuring the Desktop and Dock….'
+desc2='Configuring the Desktop and Dock.'
 (displayMessage "$desc2")
 
 # We need to rework the existing dockutil script, will add additional options later
@@ -175,7 +181,7 @@ sleep 2s
 kill jamfhelper
 
 echo "All custom login policies run." | timestamp >> $logFile
-descLogin='Logging in….'
+descLogin='Logging in.'
 (displayMessage "$descLogin")
 
 # Sleep for a few seconds
