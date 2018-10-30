@@ -2,23 +2,19 @@
 
 ###################################################################
 #
-# This script is run at enrollmentcomplete on non-DEP machines.
+# This script is run at enrollmentcomplete on LAB machines.
 # We assume that the quickadd package is being run by a user who
 # may or may not be the intended primary user of the machine.
 #
-# The script will ask for the username of the primary user (if run when a user 
-# is logged on) and, if a password is provided which matches our dircetory service
-# and there is no existing account for that user on this machine, will
-# then create a local account for that user. If the machine is a
-# laptop it is named with a compbination of that user's school code
-# and the serial number. If it is a desktop the name is looked up
-# in our network database.
+# The name is looked up in our network database and set. Then used to define the correct
+# local admin account.
+# There is a policy of (LCFG and) Application deletion, which excludes the apps built-in on macOS.
+# A daemon is generated to complete the install by calling our core-apps trigger.
+# Finally the OS is upgraded to the new supported version, this will trigger a restart.
 #
-# Finally the policy to install our core-applications is called.
-#
-# Date: "Mon Aug  6 10:21:30 BST"
-# Version: 0.1
-# Origin: https://github.com/UoE-macOS/lab
+# Date: "Tue 30 Oct 2018 14:06:46 GMT"
+# Version: 0.2.1
+# Origin: https://github.com/UoE-macOS
 # Released by JSS User: dsavage
 #
 ##################################################################
@@ -45,21 +41,6 @@ check_jss_available() {
   fi
 } 
 
-get_cmd() {
-    # These are the two background install locations.
-    cmd1="installer -pkg /Library/MacMDP/Downloads/QuickAddLab-0.1-1.pkg"
-    cmd2="installer -pkg /Library/Application Support/JAMF/Downloads/QuickAddLab-0.1-1.pkg"
-    # Determine installation process
-    checkprocess1=`ps -A | grep "$cmd1" | grep -v "grep"`
-    checkprocess2=`ps -A | grep "$cmd2" | grep -v "grep"`
-
-    if [ -z $checkprocess1 ] && [ -z $checkprocess2 ]; then
-	    background="False"
-    else
-	    background="True"
-    fi
-    echo ${background}
-}
 
 delete_lcfg() {
 if [ $dialogue == "YES" ]; then
@@ -99,6 +80,15 @@ bind_ad() {
 /usr/local/bin/jamf policy -event Bind-AD
 }
 
+generate_code() {
+
+# These may not exist yet, so just make them.
+mkdir /Library/MacSD
+mkdir /Library/MacSD/Scripts
+
+# Generate script, this will trigger the Core-Apps and remove itself.
+/bin/echo "#!/bin/bash
+
 trigger_core_apps() {
 if [ $dialogue == "YES" ]; then
 	# Display this message but send the jamfhelper process into the background
@@ -109,12 +99,125 @@ if [ $dialogue == "YES" ]; then
  -heading 'Checking Core Applications'\
  -icon '/System/Library/CoreServices/Installer.app/Contents/Resources/Installer.icns'\
  -timeout 99999\
- -description "$(echo -e We are ensuring that your core applications are installed and up-to-date.\\n\\nThis will take several minutes.\\n\\nPlease do not restart your computer.)" &
+ -description 'We are ensuring that your core applications are installed and up-to-date.' &
 	/usr/local/bin/jamf policy -event Core-Apps
 	killall jamfHelper
 else
 	/usr/local/bin/jamf policy -event Core-Apps
 fi
+}
+
+trigger_oa_apps() {
+if [ $dialogue == "YES" ]; then
+	# Display this message but send the jamfhelper process into the background
+	# so that execution continues
+	/Library/Application\ Support/JAMF/bin/jamfHelper.app/Contents/MacOS/jamfHelper\
+ -windowType utility\
+ -title 'UoE Mac Supported Desktop'\
+ -heading 'Checking OA Applications'\
+ -icon '/System/Library/CoreServices/Installer.app/Contents/Resources/Installer.icns'\
+ -timeout 99999\
+ -description 'We are ensuring that the open access applications are installed and up-to-date.' &
+	/usr/local/bin/jamf policy -event OA-Apps
+	killall jamfHelper
+else
+	/usr/local/bin/jamf policy -event OA-Apps
+fi
+}
+
+trigger_sch_apps() {
+if [ $dialogue == "YES" ]; then
+	# Display this message but send the jamfhelper process into the background
+	# so that execution continues
+	/Library/Application\ Support/JAMF/bin/jamfHelper.app/Contents/MacOS/jamfHelper\
+ -windowType utility\
+ -title 'UoE Mac Supported Desktop'\
+ -heading 'Checking School Applications'\
+ -icon '/System/Library/CoreServices/Installer.app/Contents/Resources/Installer.icns'\
+ -timeout 99999\
+ -description 'We are ensuring that your school applications are installed and up-to-date.' &
+	/usr/local/bin/jamf policy -event Sch-Apps
+	killall jamfHelper
+else
+	/usr/local/bin/jamf policy -event Sch-Apps
+fi
+}
+
+
+# Is there a user logged in
+username=`python -c 'from SystemConfiguration import SCDynamicStoreCopyConsoleUser; import sys; username = (SCDynamicStoreCopyConsoleUser(None, None, None) or [None])[0]; username = [username,""][username in [u"loginwindow", None, u""]]; sys.stdout.write(username + "\n");'`
+
+if [ -z "${username}" ]; then
+	dialogue="NO"
+else
+	dialogue="YES"
+fi
+
+        
+# stop us going to sleep, might need to download lots...
+caffeinate -dis &
+
+# Run any policies that are triggered by the 'Core-Apps' event  
+trigger_core_apps
+
+# Install oa apps
+trigger_oa_apps
+
+# Install school apps
+trigger_sch_apps
+
+# Run recon to let the JSS know who the primary user of this machine will be
+/usr/local/bin/jamf recon -endUsername LabUser
+
+# Cache offline policies for login items
+#/usr/local/bin/jamf policy -event Login
+/usr/local/bin/jamf policy -event Dock
+/usr/local/bin/jamf policy -event LoginItem
+
+# Force the microsoft update
+/usr/local/bin/jamf policy -event MS-UP
+
+# Try removing the diagnostics startup
+rm -f /Library/LaunchDaemons/com.apple.installer.osmessagetracing.plist
+touch /var/db/.AppleDiagnosticsSetupDone
+
+## Remove LaunchDaemon
+/bin/rm -f /Library/LaunchDaemons/ed.jamf.finish_Install.plist
+## Remove Script
+rm -f /Library/MacSD/Scripts/finish_Install.sh
+
+# Trigger softwareupdate
+/usr/sbin/softwareupdate --install --all
+
+shutdown -r now
+
+exit 0" > /Library/MacSD/Scripts/finish_Install.sh
+
+# Set the permission on the file just made.
+chmod +x /Library/MacSD/Scripts/finish_Install.sh
+
+cat << EOF > /Library/LaunchDaemons/ed.jamf.finish_Install.plist
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>ed.jamf.finish_Install</string>
+    <key>ProgramArguments</key>
+    <array>
+        <string>/bin/bash</string>
+        <string>-c</string>
+        <string>/Library/MacSD/Scripts/finish_Install.sh</string>
+    </array>
+    <key>RunAtLoad</key>
+    <true/>
+</dict>
+</plist>
+EOF
+
+# Set the permission on the file just made.
+/usr/sbin/chown root:wheel /Library/LaunchDaemons/ed.jamf.finish_Install.plist
+/bin/chmod 644 /Library/LaunchDaemons/ed.jamf.finish_Install.plist
 }
 
 trigger_os_installer() {
@@ -127,11 +230,40 @@ if [ $dialogue == "YES" ]; then
  -heading 'Checking Core Applications'\
  -icon '/System/Library/CoreServices/Installer.app/Contents/Resources/Installer.icns'\
  -timeout 99999\
- -description "$(echo -e We are now putting the new macOS installer in-place, if it isn't available.\\n\\nThis should take 20 to 30 minutes.\\n\\nThe upgrade will launch automatically once this installation is complete.\\n\\nPlease do not restart your computer.)" &
+ -description "$(echo -e We are now putting the new macOS installer in-place.\\n\\nThis should take 20 to 30 minutes.\\n\\nThe upgrade will launch automatically once this installation is complete.\\n\\nPlease do not restart your computer.)" &
 	/usr/local/bin/jamf policy -event Install-macOS
 	killall jamfHelper
 else
 	/usr/local/bin/jamf policy -event Install-macOS
+fi
+}
+
+do_restart () {
+username=`python -c 'from SystemConfiguration import SCDynamicStoreCopyConsoleUser; import sys; username = (SCDynamicStoreCopyConsoleUser(None, None, None) or [None])[0]; username = [username,""][username in [u"loginwindow", None, u""]]; sys.stdout.write(username + "\n");'`
+
+if [ -z $username ] || [ "$username" == '' ]; then
+	dialogue="NO"
+else
+	dialogue="YES"
+fi
+    
+if [ $dialogue == "YES" ]; then
+/Library/Application\ Support/JAMF/bin/jamfHelper.app/Contents/MacOS/jamfHelper\
+  -windowType utility\
+  -title 'UoE Mac Supported Desktop'\
+  -heading 'Please restart'\
+  -icon '/System/Library/CoreServices/Installer.app/Contents/Resources/Installer.icns'\
+  -timeout 20\
+  -description "$(echo -e Core installation complete.\\n\\n This system will restart in 20 seconds and continue to install the Core Applications.)"
+
+# We are done - delete our lock file
+rm "${LOCK_FILE}"
+# We didn't give the user a choice, so...
+#reboot
+shutdown -r now
+else
+rm "${LOCK_FILE}"
+shutdown -r now
 fi
 }
 
@@ -163,18 +295,64 @@ set_computer_name() {
   logger "$0: Set machine name to ${name}"
 }
 
-update_jss() {
-  /usr/local/bin/jamf recon -endUsername LabUser
-}
+# First check we can contact the JSS
+
+check_jss_available
+# stop us going to sleep, might need to download the OS installer
+caffeinate -dis &
 
 # Drop a lock file so that other processes know
 # we are running
 
 touch "${LOCK_FILE}"
 
+# Give time for setup utility to start if it's going to
+sleep 60 
+
 # Is there a user logged in
 username=`python -c 'from SystemConfiguration import SCDynamicStoreCopyConsoleUser; import sys; username = (SCDynamicStoreCopyConsoleUser(None, None, None) or [None])[0]; username = [username,""][username in [u"loginwindow", None, u""]]; sys.stdout.write(username + "\n");'`
-dialogue=""
+
+echo "User is: ${username}"
+
+if [ -z "${username}" ]; then
+	export USER_IS_MBSETUPUSER=false
+	dialogue="NO"
+elif [ "${username}" == "_mbsetupuser" ]; then
+	# We are running on top of the setup app
+    export USER_IS_MBSETUPUSER=true
+    dialogue="NO"
+else
+	export USER_IS_MBSETUPUSER=false
+	dialogue="YES"
+fi
+
+if [ -f "/Library/MacSD/.UoECleanBuildRequested" ]
+# Has a clean build been requested? If so, just do it.
+# this should start a clean build and reboot the machine.
+then
+    echo "Clean build requested. Invoking clean build policy"
+	/usr/local/bin/jamf policy -event clean-build-lab
+else
+	if ${USER_IS_MBSETUPUSER}
+    then
+		# We are on top of the setup programme, so throw up a fullscreen thingie
+    	/Library/Application\ Support/JAMF/bin/jamfHelper.app/Contents/MacOS/jamfHelper\
+  		-windowType fs\
+  		-title 'UoE Mac Supported Desktop'\
+  		-heading 'Completing system installation.'\
+  		-icon '/System/Library/CoreServices/Installer.app/Contents/Resources/Installer.icns'\
+  		-description 'Please use another computer.' &
+	fi
+fi
+
+# If we have got this far, make sure the user doesn't see the setup utility
+touch /var/db/.AppleSetupDone
+touch /var/db/.AppleDiagnosticsSetupDone
+
+# And set locale appropriately
+defaults write NSGlobalDomain AppleLanguages "(en-GB)"
+defaults write NSGlobalDomain AppleLocale "en_GB"
+
 
 # What OS is running?
 osversion=`sw_vers -productVersion | awk -F . '{print $2}'`
@@ -182,34 +360,49 @@ osversion=`sw_vers -productVersion | awk -F . '{print $2}'`
 # Set the computers name
 set_computer_name
 
+# Check whether School/dept's local admin account exists and, if not, created it
+/usr/local/bin/jamf policy -event Check-Local-Admin
+
 # If an old LCFG installation exists, delete it.
 delete_lcfg
 
 # Delete the existing app set on the mac
 delete_apps
 
-# Run recon to let the JSS know who the primary user of this machine will be
-update_jss ${uun} 
+# Sleep here
+sleep 5
 
-# Run any policies that are triggered by the 'Core-Apps' event  
-trigger_core_apps
+# Report the status now apps are removed
+/usr/local/bin/jamf recon
 
-# Cache offline policies for login items
-#/usr/local/bin/jamf policy -event Login
-/usr/local/bin/jamf policy -event Dock
-/usr/local/bin/jamf policy -event LoginItem
+# Generate script and daemon, this will trigger the Core-Apps and remove itself.
+generate_code
 
-# Check whether School/dept's local admin account exists and, if not, created it
-/usr/local/bin/jamf policy -event Check-Local-Admin
+# OS version on the Mac
+osversion=`sw_vers -productVersion | awk -F . '{print $2}'`
 
 # Run any policies that are triggered by the 'OS-Installer' event  (do this last)
 free_space=`diskutil info / | grep "Free Space" | awk '{print $4}' | awk -F "." '{print $1}'`
 
-if [ $free_space -ge 25 ]; then
-	rm -f "${LOCK_FILE}"
-	trigger_os_installer
+if [ $osversion == "13" ]; then
+	logger "$0: OS on version 13, High Sierra already."
 else
-	logger "$0: Not enough free disk space to continue"
+	if [ $free_space -ge 25 ]; then
+	    rm -f "${LOCK_FILE}"
+		trigger_os_installer
+	else
+	    logger "$0: Not enough free disk space to continue"
+	fi
+fi
+
+if ! [ $osversion == "13" ] && [ $free_space -ge 25 ]; then
+    # Delete then Download a fresh OS installer
+    rm -fR "/Applications/Install macOS High Sierra.app"
+    /usr/local/bin/jamf policy -event macOS-Installer
+    sleep 2
+    /usr/local/bin/jamf policy -event Install-macOS
+else
+    do_restart
 fi
 
 exit 0;
