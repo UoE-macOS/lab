@@ -13,7 +13,7 @@
 # Finally the OS is upgraded to the new supported version, this will trigger a restart.
 #
 # Date: "Thu  7 Feb 2019 14:01:52 GMT"
-# Version: 0.2.2
+# Version: 0.2.3
 # Origin: https://github.com/UoE-macOS
 # Released by JSS User: dsavage
 #
@@ -253,8 +253,8 @@ if [ $dialogue == "YES" ]; then
   -title 'UoE Mac Supported Desktop'\
   -heading 'Please restart'\
   -icon '/System/Library/CoreServices/Installer.app/Contents/Resources/Installer.icns'\
-  -timeout 20\
-  -description "$(echo -e Core installation complete.\\n\\n This system will restart in 20 seconds and continue to install the Core Applications.)"
+  -timeout 30\
+  -description "$(echo -e Core installation complete.\\n\\n This system will restart in 30 seconds and continue to install the Core Applications.)"
 
 # We are done - delete our lock file
 rm "${LOCK_FILE}"
@@ -409,6 +409,7 @@ case "$osversion" in
 	if [ $free_space -ge 25 ]; then
     	# Delete then Download a fresh OS installer
     	rm -fR "/Applications/Install macOS High Sierra.app"
+      	rm -fR "/Applications/Install macOS Mojave.app"
     	/usr/local/bin/jamf policy -event macOS-Installer
     	sleep 2
     	/usr/local/bin/jamf policy -event Install-macOS
@@ -417,5 +418,6 @@ case "$osversion" in
 	fi
     ;;
 esac
+
 
 exit 0;
