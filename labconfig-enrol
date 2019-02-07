@@ -12,8 +12,8 @@
 # A daemon is generated to complete the install by calling our core-apps trigger.
 # Finally the OS is upgraded to the new supported version, this will trigger a restart.
 #
-# Date: "Tue 30 Oct 2018 14:06:46 GMT"
-# Version: 0.2.1
+# Date: "Thu  7 Feb 2019 14:01:52 GMT"
+# Version: 0.2.2
 # Origin: https://github.com/UoE-macOS
 # Released by JSS User: dsavage
 #
@@ -384,7 +384,7 @@ osversion=`sw_vers -productVersion | awk -F . '{print $2}'`
 # Run any policies that are triggered by the 'OS-Installer' event  (do this last)
 free_space=`diskutil info / | grep "Free Space" | awk '{print $4}' | awk -F "." '{print $1}'`
 
-if [ $osversion == "13" ]; then
+if [ $osversion == "13" ] || [ $osversion == "14" ]; then
 	logger "$0: OS on version 13, High Sierra already."
 else
 	if [ $free_space -ge 25 ]; then
@@ -395,14 +395,27 @@ else
 	fi
 fi
 
-if ! [ $osversion == "13" ] && [ $free_space -ge 25 ]; then
-    # Delete then Download a fresh OS installer
-    rm -fR "/Applications/Install macOS High Sierra.app"
-    /usr/local/bin/jamf policy -event macOS-Installer
-    sleep 2
-    /usr/local/bin/jamf policy -event Install-macOS
-else
-    do_restart
-fi
+
+case "$osversion" in
+"13")
+	do_restart
+	;;
+
+"14")
+	do_restart
+	;;
+	
+*)
+	if [ $free_space -ge 25 ]; then
+    	# Delete then Download a fresh OS installer
+    	rm -fR "/Applications/Install macOS High Sierra.app"
+    	/usr/local/bin/jamf policy -event macOS-Installer
+    	sleep 2
+    	/usr/local/bin/jamf policy -event Install-macOS
+	else
+    	do_restart
+	fi
+    ;;
+esac
 
 exit 0;
