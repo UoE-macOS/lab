@@ -20,11 +20,13 @@ userName=`python -c 'from SystemConfiguration import SCDynamicStoreCopyConsoleUs
 if [ -d "/Users/Shared/$userName/iMovie-Local" ]; then
 	echo "******  /Users/Shared/$userName/iMovie-Local exists. Confirming its permissions... ******"
 	chown -R $userName "/Users/Shared/$userName"
+    	chmod 700 "/Users/Shared/$userName"
 else
 	echo "****** /Users/Shared/$userName/iMovie-Local does not exist. Creating it... ******"	
 	mkdir "/Users/Shared/$userName"
 	mkdir "/Users/Shared/$userName/iMovie-Local"
 	chown -R $userName "/Users/Shared/$userName"
+  	chmod 700 "/Users/Shared/$userName"
 fi
 	
 # Add shortcut to the user's Finder sidebar
