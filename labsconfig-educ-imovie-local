@@ -1,0 +1,41 @@
+#!/bin/bash
+
+###################################################################################################################################
+#
+# Script for Education Lab Macs using iMovie. The software can only save to the local drive and not to a server location.
+# Creates a /Users/Shared/$userName/iMovie-Local folder for each logged-in user and adds an 'iMovie-Local' Finder sidebar shortcut.
+#
+# Date: Tue 12 Feb 2019 15:51:44 GMT
+# Version: 0.1
+# Author: ganders1
+#
+###################################################################################################################################
+
+# Get logged-in user
+
+userName=`python -c 'from SystemConfiguration import SCDynamicStoreCopyConsoleUser; import sys; username = (SCDynamicStoreCopyConsoleUser(None, None, None) or [None])[0]; username = [username,""][username in [u"loginwindow", None, u""]]; sys.stdout.write(username + "\n");'`
+
+# Check if /Users/Shared/$userName/iMovie-Local folder exists and set / confirm its access permissions for the user.
+
+if [ -d "/Users/Shared/$userName/iMovie-Local" ]; then
+	echo "******  /Users/Shared/$userName/iMovie-Local exists. Confirming its permissions... ******"
+	chown -R $userName "/Users/Shared/$userName"
+else
+	echo "****** /Users/Shared/$userName/iMovie-Local does not exist. Creating it... ******"	
+	mkdir "/Users/Shared/$userName"
+	mkdir "/Users/Shared/$userName/iMovie-Local"
+	chown -R $userName "/Users/Shared/$userName"
+fi
+	
+# Add shortcut to the user's Finder sidebar
+
+echo "****** Checking /Users/Shared/$userName/iMovie-Local sidebar entry in Finder. ******"
+	python - <<EOF
+import sys
+sys.path.append('/usr/local/python')
+from FinderSidebarEditor import FinderSidebar                  # Import the module
+sidebar = FinderSidebar()                                      # Create a Finder sidebar instance to act on.
+sidebar.add("/Users/Shared/$userName/iMovie-Local")          # Add redirected Documents favourite to sidebar
+EOF
+
+exit 0;
