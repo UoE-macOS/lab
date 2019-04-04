@@ -12,8 +12,8 @@
 # A daemon is generated to complete the install by calling our core-apps trigger.
 # Finally the OS is upgraded to the new supported version, this will trigger a restart.
 #
-# Date: "Thu  7 Feb 2019 14:01:52 GMT"
-# Version: 0.2.3
+# Date: "Thu  4 Apr 2019 13:22:29 BST"
+# Version: 0.2.4
 # Origin: https://github.com/UoE-macOS
 # Released by JSS User: dsavage
 #
@@ -143,6 +143,23 @@ else
 fi
 }
 
+trigger_vcpod_apps() {
+if [ $dialogue == "YES" ]; then
+	# Display this message but send the jamfhelper process into the background
+	# so that execution continues
+	/Library/Application\ Support/JAMF/bin/jamfHelper.app/Contents/MacOS/jamfHelper\
+ -windowType utility\
+ -title 'UoE Mac Supported Desktop'\
+ -heading 'Checking VCPod Applications'\
+ -icon '/System/Library/CoreServices/Installer.app/Contents/Resources/Installer.icns'\
+ -timeout 99999\
+ -description 'We are ensuring that your video conferencing applications are installed and up-to-date.' &
+	/usr/local/bin/jamf policy -event VCPod-Apps
+	killall jamfHelper
+else
+	/usr/local/bin/jamf policy -event VCPod-Apps
+fi
+}
 
 # Is there a user logged in
 username=`python -c 'from SystemConfiguration import SCDynamicStoreCopyConsoleUser; import sys; username = (SCDynamicStoreCopyConsoleUser(None, None, None) or [None])[0]; username = [username,""][username in [u"loginwindow", None, u""]]; sys.stdout.write(username + "\n");'`
@@ -157,6 +174,9 @@ fi
 # stop us going to sleep, might need to download lots...
 caffeinate -dis &
 
+# Check whether School/dept's local admin account exists and, if not, created it
+/usr/local/bin/jamf policy -event Check-Local-Admin
+
 # Run any policies that are triggered by the 'Core-Apps' event  
 trigger_core_apps
 
@@ -165,6 +185,9 @@ trigger_oa_apps
 
 # Install school apps
 trigger_sch_apps
+
+# Install school apps
+trigger_vcpod_apps
 
 # Run recon to let the JSS know who the primary user of this machine will be
 /usr/local/bin/jamf recon -endUsername LabUser
@@ -352,6 +375,21 @@ touch /var/db/.AppleDiagnosticsSetupDone
 # And set locale appropriately
 defaults write NSGlobalDomain AppleLanguages "(en-GB)"
 defaults write NSGlobalDomain AppleLocale "en_GB"
+
+#enabling location services
+/usr/bin/defaults write /var/db/locationd/Library/Preferences/ByHost/com.apple.locationd LocationServicesEnabled -int 1
+
+uuid=/usr/sbin/system_profiler SPHardwareDataType | grep "Hardware UUID" | cut -c22-57
+/usr/bin/defaults write /var/db/locationd/Library/Preferences/ByHost/com.apple.locationd.$uuid LocationServicesEnabled -int 1
+
+#configure automatic timezone
+/usr/bin/defaults write /Library/Preferences/com.apple.timezone.auto Active -bool YES
+/usr/bin/defaults write /private/var/db/timed/Library/Preferences/com.apple.timed.plist TMAutomaticTimeOnlyEnabled -bool YES
+/usr/bin/defaults write /private/var/db/timed/Library/Preferences/com.apple.timed.plist TMAutomaticTimeZoneEnabled -bool YES
+
+/usr/sbin/systemsetup -setusingnetworktime on
+/usr/sbin/systemsetup -gettimezone
+/usr/sbin/systemsetup -getnetworktimeserver
 
 
 # What OS is running?
