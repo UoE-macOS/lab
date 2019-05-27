@@ -5,8 +5,8 @@
 # Script to add applications  to the dock.
 # Utilises - https://github.com/kcrawford/dockutil
 #
-# Last Changed: "Tue  9 Oct 2018 14:20:24 BST"
-# Version: 0.7
+# Last Changed: "Mon 27 May 2019 10:56:30 BST"
+# Version: 0.8
 # Origin: https://github.com/UoE-macOS/
 # Released by JSS User: ganders1
 #
@@ -118,6 +118,13 @@ if [ -d "/Applications/Adobe Photoshop CC 2018" ]; then
 	$DOCK_UTIL --add "/Applications/Adobe Photoshop CC 2018/Adobe Photoshop CC 2018.app" --no-restart $DOCK_PREF
 fi
 
+if hostname | grep "educ-" >/dev/null 2>&1 ; then
+	echo "Adding Bridge." | timestamp >> $logFile
+	if [ -d "/Applications/Adobe Bridge CC 2018" ]; then
+		$DOCK_UTIL --add "/Applications/Adobe Bridge CC 2018/Adobe Bridge CC 2018.app" --no-restart $DOCK_PREF
+	fi
+fi
+
 echo "Add to display" | timestamp >> $logFile
 if [ -d "/Library/MacSD/Applications" ]; then
 	# Make sure the icon is set
@@ -136,6 +143,7 @@ $DOCK_UTIL --remove "Siri" --no-restart $DOCK_PREF
 $DOCK_UTIL --remove "Mail" --no-restart $DOCK_PREF
 $DOCK_UTIL --remove "Contacts" --no-restart $DOCK_PREF
 $DOCK_UTIL --remove "Calendar" --no-restart $DOCK_PREF
+$DOCK_UTIL --remove "News" --no-restart $DOCK_PREF
 $DOCK_UTIL --remove "Notes" --no-restart $DOCK_PREF
 $DOCK_UTIL --remove "Reminders" --no-restart $DOCK_PREF
 $DOCK_UTIL --remove "Maps" --no-restart $DOCK_PREF
