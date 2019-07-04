@@ -1,0 +1,56 @@
+#!/bin/bash
+
+###################################################################
+#
+# Enable macOS wipe and load for lab Macs (10.14)
+
+#
+# Date: Thu 13 Jun 2019 14:33:58 BST
+# Version: 0.1.4
+# Creator: dsavage
+#
+##################################################################
+
+
+# # # # # # 
+# SYSTEM CHECKS
+# # # # # # 
+
+# Check the install process isn't underway
+
+if [ -e /macOS\ Install\ Data ]
+then
+# Install proces already underway
+exit 0
+fi
+
+##Check if free space > 15GB
+freeSpace=$( /usr/sbin/diskutil info / | grep "Free Space" | awk '{print $4}' )
+if [[ ${freeSpace%.*} -ge 15 ]]; then
+    spaceStatus="OK"
+    /bin/echo "Disk Check: OK - ${freeSpace%.*} Free Space Detected"
+else
+    spaceStatus="ERROR"
+    /bin/echo "Disk Check: ERROR - ${freeSpace%.*} Free Space Detected"
+fi
+
+##Start macOS Upgrade
+macOS_app_vers=`defaults read "/Applications/Install macOS Mojave.app/Contents/Info" CFBundleShortVersionString | awk -F "." '{print $1$2}'`
+
+if [ -z $macOS_app_vers ]; then
+	macOS_app_vers=126
+fi
+
+echo $macOS_app_vers
+
+if [ $macOS_app_vers -ge 144 ]; then
+	/Applications/Install\ macOS\ Mojave.app/Contents/Resources/startosinstall --eraseinstall --agreetolicense --installpackage /Users/Shared/QuickAddLab-0.1-1.pkg --nointeraction  
+else
+	# Do a delete incase an older version is there
+	rm -fR "/Applications/Install macOS Mojave.app"
+    # Add the installer
+    /usr/local/bin/jamf policy -event OS-Installer      
+	/Applications/Install\ macOS\ Mojave.app/Contents/Resources/startosinstall --eraseinstall --agreetolicense --installpackage /Users/Shared/QuickAddLab-0.1-1.pkg --nointeraction 
+fi
+
+exit 0;
