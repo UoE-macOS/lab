@@ -1,0 +1,79 @@
+#!/bin/bash
+
+#######################################################################################################################
+#
+# This script, based on parts of the 'Remove JAMF Management' script, will remove the JSS record for the target device.
+# 
+# Last Changed: Thu  4 Jul 2019 14:08:28 BST
+# Version: 0.1.1
+# Origin: https://github.com/UoE-macOS/jss.git
+# Released by JSS User: ganders1
+#
+#######################################################################################################################
+
+# Create log file
+logFile="/Library/Logs/remove-jss-record.log"
+
+# Check to see if log exists. If so then delete as we only require an up to date log
+if [ -f "$logFile" ]
+then
+    rm -f $logFile
+fi
+
+
+# Decrypt JSS details
+# Get computer name
+compname="$2"
+# Get encrypted api user name
+apiuser="$4"
+# Get encrypted api password
+apipword="$5"
+# Get salt phrase
+salt="$6"
+# Get passphrase
+pphrase="$7"
+
+
+# Function for decrypting strings
+function DecryptString() {
+    # Usage: ~$ DecryptString "Encrypted String" "Salt" "Passphrase"
+    echo "${1}" | /usr/bin/openssl enc -aes256 -d -a -A -S "${2}" -k "${3}"
+}
+
+
+# Removing JSS record
+# Decrypt strings
+JSSusername=`DecryptString "$apiuser" "$salt" "$pphrase"`
+JSSpword=`DecryptString "$apipword" "$salt" "$pphrase"`
+
+echo "Attempting to remove record from the JSS...." | tee -a $logFile
+echo "Name of record is $compname" | tee -a $logFile
+
+# Attempt to get record
+jssRecordExists=$(curl https://uoe.jamfcloud.com/JSSResource/computers/name/"$compname" -u "$JSSusername":"$JSSpword" --write-out \\n%{http_code} --output - | awk 'END {print $NF}')
+
+# If the http response equals 200, then record exists
+if [ $jssRecordExists -eq 200 ];
+	then
+	echo "Found JSS record. Removing..." | tee -a $logFile
+	
+	# Remove record
+	jssRecordRemove=$(curl https://uoe.jamfcloud.com/JSSResource/computers/name/"$compname" -u "$JSSusername":"$JSSpword" -X DELETE --write-out \\n%{http_code} --output - | awk 'END {print $NF}')
+	
+	# If http reponse status equals 200 then record has been successfully removed
+	if [ $jssRecordRemove -eq 200 ]
+	then
+		echo "$compname JSS record removed!" | tee -a $logFile
+		
+	# Something went wrong - remove manually
+	else
+	   	echo "JSS record can be found but there is a problem deleting. Please remove manually." | tee -a $logFile
+	fi
+elif [ $jssRecordExists -eq 404 ]
+then
+	echo "Unable to delete record. JSS unreachable." | tee -a $logFile
+else
+	echo "Unable to find record. Please remove manually." | tee -a $logFile
+fi
+
+exit 0;
