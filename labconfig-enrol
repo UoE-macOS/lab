@@ -41,24 +41,6 @@ check_jss_available() {
   fi
 } 
 
-
-delete_lcfg() {
-if [ $dialogue == "YES" ]; then
-	# Display a message in the background...
-	/Library/Application\ Support/JAMF/bin/jamfHelper.app/Contents/MacOS/jamfHelper\
- -windowType utility\
- -title 'UoE Mac Supported Desktop'\
- -heading 'Removing LCFG'\
- -icon '/System/Library/CoreServices/Installer.app/Contents/Resources/Installer.icns'\
- -timeout 99999\
- -description "$(echo -e We are removing the previous management framework.\\n\\nThis will take several minutes.\\nPlease do not restart your computer)" &
-	/usr/local/bin/jamf policy -event Delete-LCFG
-	killall jamfHelper
-else
-/usr/local/bin/jamf policy -event Delete-LCFG
-fi
-}
-
 delete_apps() {
 if [ $dialogue == "YES" ]; then
 	# Display a message in the background...
@@ -315,7 +297,26 @@ set_computer_name() {
   /usr/sbin/scutil --set LocalHostName $( echo "${name}" | awk -F '.' '{print $1}' )
   /usr/sbin/scutil --set ComputerName "${name}"
   /usr/sbin/scutil --set HostName "${name}"
-  logger "$0: Set machine name to ${name}"
+  # Set the NetBIOS name
+  defaults write /Library/Preferences/SystemConfiguration/com.apple.smb.server NetBIOSName -string "${name}"
+  # Check name is right
+  livename=`/usr/sbin/scutil --get ComputerName`
+  if [ $livename == $name ]; then
+  	logger "$0: Set machine name to ${name}"
+ else
+ 	# If we don't get a name for some reason, first try a dig to get the dns name.
+    ip_address=`ipconfig getifaddr en0`
+    name=`dig +short -x ${ip_address} | awk -F '.' '{print $1}'`
+    /usr/sbin/scutil --set LocalHostName "${name}"
+    /usr/sbin/scutil --set ComputerName "${name}"
+    /usr/sbin/scutil --set HostName "${name}"
+     # Set the NetBIOS name
+	defaults write /Library/Preferences/SystemConfiguration/com.apple.smb.server NetBIOSName -string "${name}"
+ fi
+ if [ -z ${name} ]; then
+ 	# Fall through to the naming script to try setting a sensible value
+ 	/usr/local/bin/jamf policy -event Set-Desktop-Name
+ fi
 }
 
 # First check we can contact the JSS
@@ -400,9 +401,6 @@ set_computer_name
 
 # Check whether School/dept's local admin account exists and, if not, created it
 /usr/local/bin/jamf policy -event Check-Local-Admin
-
-# If an old LCFG installation exists, delete it.
-delete_lcfg
 
 # Delete the existing app set on the mac
 delete_apps
