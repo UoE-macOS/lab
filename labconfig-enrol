@@ -12,8 +12,8 @@
 # A daemon is generated to complete the install by calling our core-apps trigger.
 # Finally the OS is upgraded to the new supported version, this will trigger a restart.
 #
-# Date: "Thu  4 Apr 2019 13:22:29 BST"
-# Version: 0.2.4
+# Date: "Tue 16 Jul 2019 15:56:29 BST"
+# Version: 0.2.5
 # Origin: https://github.com/UoE-macOS
 # Released by JSS User: dsavage
 #
@@ -40,6 +40,7 @@ check_jss_available() {
     true
   fi
 } 
+
 
 delete_apps() {
 if [ $dialogue == "YES" ]; then
@@ -174,6 +175,9 @@ trigger_vcpod_apps
 # Run recon to let the JSS know who the primary user of this machine will be
 /usr/local/bin/jamf recon -endUsername LabUser
 
+# Double check the computer name
+/usr/local/bin/jamf policy -event Set-Desktop-Name
+
 # Cache offline policies for login items
 #/usr/local/bin/jamf policy -event Login
 /usr/local/bin/jamf policy -event Dock
@@ -225,23 +229,6 @@ EOF
 /bin/chmod 644 /Library/LaunchDaemons/ed.jamf.finish_Install.plist
 }
 
-trigger_os_installer() {
-if [ $dialogue == "YES" ]; then
-	# Display this message but send the jamfhelper process into the background
-	# so that execution continues
-	/Library/Application\ Support/JAMF/bin/jamfHelper.app/Contents/MacOS/jamfHelper\
- -windowType utility\
- -title 'UoE Mac Supported Desktop'\
- -heading 'Checking Core Applications'\
- -icon '/System/Library/CoreServices/Installer.app/Contents/Resources/Installer.icns'\
- -timeout 99999\
- -description "$(echo -e We are now putting the new macOS installer in-place.\\n\\nThis should take 20 to 30 minutes.\\n\\nThe upgrade will launch automatically once this installation is complete.\\n\\nPlease do not restart your computer.)" &
-	/usr/local/bin/jamf policy -event Install-macOS
-	killall jamfHelper
-else
-	/usr/local/bin/jamf policy -event Install-macOS
-fi
-}
 
 do_restart () {
 username=`python -c 'from SystemConfiguration import SCDynamicStoreCopyConsoleUser; import sys; username = (SCDynamicStoreCopyConsoleUser(None, None, None) or [None])[0]; username = [username,""][username in [u"loginwindow", None, u""]]; sys.stdout.write(username + "\n");'`
@@ -320,7 +307,6 @@ set_computer_name() {
 }
 
 # First check we can contact the JSS
-
 check_jss_available
 # stop us going to sleep, might need to download the OS installer
 caffeinate -dis &
@@ -420,8 +406,8 @@ osversion=`sw_vers -productVersion | awk -F . '{print $2}'`
 # Run any policies that are triggered by the 'OS-Installer' event  (do this last)
 free_space=`diskutil info / | grep "Free Space" | awk '{print $4}' | awk -F "." '{print $1}'`
 
-if [ $osversion == "13" ] || [ $osversion == "14" ]; then
-	logger "$0: OS on version 13, High Sierra already."
+if [ $osversion == "13" ] || [ $osversion == "14" ] || [ $osversion == "15" ]; then
+	logger "$0: OS on version 10.13 or 10.14 already."
 else
 	if [ $free_space -ge 25 ]; then
 	    rm -f "${LOCK_FILE}"
@@ -440,15 +426,17 @@ case "$osversion" in
 "14")
 	do_restart
 	;;
-	
+    
+"15")
+	do_restart
+	;;
+    
 *)
 	if [ $free_space -ge 25 ]; then
     	# Delete then Download a fresh OS installer
     	rm -fR "/Applications/Install macOS High Sierra.app"
       	rm -fR "/Applications/Install macOS Mojave.app"
     	/usr/local/bin/jamf policy -event macOS-Installer
-    	sleep 2
-    	/usr/local/bin/jamf policy -event Install-macOS
 	else
     	do_restart
 	fi
