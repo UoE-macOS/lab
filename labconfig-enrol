@@ -336,25 +336,6 @@ else
 	dialogue="YES"
 fi
 
-if [ -f "/Library/MacSD/.UoECleanBuildRequested" ]
-# Has a clean build been requested? If so, just do it.
-# this should start a clean build and reboot the machine.
-then
-    echo "Clean build requested. Invoking clean build policy"
-	/usr/local/bin/jamf policy -event clean-build-lab
-else
-	if ${USER_IS_MBSETUPUSER}
-    then
-		# We are on top of the setup programme, so throw up a fullscreen thingie
-    	/Library/Application\ Support/JAMF/bin/jamfHelper.app/Contents/MacOS/jamfHelper\
-  		-windowType fs\
-  		-title 'UoE Mac Supported Desktop'\
-  		-heading 'Completing system installation.'\
-  		-icon '/System/Library/CoreServices/Installer.app/Contents/Resources/Installer.icns'\
-  		-description 'Please use another computer.' &
-	fi
-fi
-
 # If we have got this far, make sure the user doesn't see the setup utility
 touch /var/db/.AppleSetupDone
 touch /var/db/.AppleDiagnosticsSetupDone
@@ -442,6 +423,5 @@ case "$osversion" in
 	fi
     ;;
 esac
-
 
 exit 0;
