@@ -2,9 +2,9 @@
 
 ######
 #
-# Date: Wed 17 Oct 2018 09:16:33 BST
-# Version: 0.6
-# Author: ganders1
+# Date: Thu  8 Aug 2019 14:54:03 BST
+# Version: 0.7
+# Author: dsavage
 #
 ######
 
@@ -101,6 +101,11 @@ if [ -d /Applications/Adobe\ Acrobat\ DC/Adobe\ Acrobat.app ]; then
     sudo -u ${NetUser} python -c 'from LaunchServices import LSSetDefaultRoleHandlerForContentType; LSSetDefaultRoleHandlerForContentType("com.adobe.pdf", 0x00000002, "com.adobe.Acrobat.Pro")'
 fi
 
+# resets the TCC camera approval database
+/usr/bin/tccutil reset Camera
+# resets the TCC microphone approval database
+/usr/bin/tccutil reset Microphone
+
 
 # Set lab screensaver time beyond the auto-logout time so that message can remain visible.
 echo "Setting lab screensaver time..." | timestamp >> $logFile
@@ -195,11 +200,6 @@ echo "All custom login policies run." | timestamp >> $logFile
 descLogin='Logging in.'
 (displayMessage "$descLogin")
 
-# Sleep for a few seconds
-sleep 2s
-
-# Open welcome page for OA Labs
-/usr/local/jamf/bin/jamf policy -event welcomePage
 
 echo "Killing all instances of LockScreen and jamfHelper..." | timestamp >> $logFile
 # Kill the LockScreen and the JAMF helper once all login policies have completed
@@ -207,11 +207,18 @@ killall -9 LockScreen
 killall -9 jamfhelper
 
 # kick the login items
-/usr/local/bin/jamf policy -event LoginItem
+#/usr/local/bin/jamf policy -event LoginItem
 
-echo "Done" | timestamp >> $logFile
 
 echo "Trying custom trigger for Desktop image again!" | timestamp >> $logFile
 /usr/local/jamf/bin/jamf policy -event Desktop
+
+# Sleep for a few seconds
+sleep 2s
+
+# Open welcome page for OA Labs
+/usr/local/jamf/bin/jamf policy -event welcomePage
+
+echo "Done" | timestamp >> $logFile
 
 exit 0;
