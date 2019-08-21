@@ -1,0 +1,204 @@
+#!/bin/bash
+
+###################################################################
+#
+# Script to add applications  to the dock.
+# Utilises - https://github.com/kcrawford/dockutil
+#
+# Last Changed: "Wed 17 Jul 2019 10:16:22 BST"
+# Version: 0.9
+# Origin: https://github.com/UoE-macOS/
+# Released by JSS User: ganders1
+#
+##################################################################
+
+# Create logfile
+logFile="/Library/Logs/dock.log"
+
+# Check to see if log exists. If so then delete as we only require an up to date log
+if [ -f "$logFile" ]
+then
+    rm -f $logFile
+fi
+
+# Function for obtaining timestamp
+timestamp() {
+	while read -r line
+	do
+        timestamp=`date`
+        echo "[$timestamp] $line"
+	done
+}
+
+# Get logged in user
+ACTIVE_USER=`python -c 'from SystemConfiguration import SCDynamicStoreCopyConsoleUser; import sys; username = (SCDynamicStoreCopyConsoleUser(None, None, None) or [None])[0]; username = [username,""][username in [u"loginwindow", None, u""]]; sys.stdout.write(username + "\n");'`
+
+echo "Active user is $ACTIVE_USER" | timestamp >> $logFile
+
+if [ -z "${ACTIVE_USER}" ] || [ "${ACTIVE_USER}" == "root" ] || [ "${ACTIVE_USER}" == "" ]; then
+exit 0;
+fi
+
+# We need to wait for the dock to actually start if a user is present
+#until [[ $(pgrep Dock) ]]; do
+#	echo "Waiting for dock to start." | timestamp >> $logFile
+#	wait
+#done
+#echo "Dock started. Continuing..." | timestamp >> $logFile
+
+
+
+
+DOCK_PREF="/Users/$ACTIVE_USER/Library/Preferences/com.apple.dock.plist"
+echo "Dock pref file ${DOCK_PREF}" | timestamp >> $logFile
+
+# Waiting until the user's Dock plist exists.
+#until [[ -f "/Users/$ACTIVE_USER/Library/Preferences/com.apple.dock.plist" ]]; do
+#	echo "In loop, waiting for user's Dock plist to exist." | timestamp >> $logFile
+#	wait
+#done
+sleep 3
+echo "Pref file is: ${DOCK_PREF}" | timestamp >> $logFile
+if [ -f "${DOCK_PREF}" ]; then
+	echo "Dock preference exists." | timestamp >> $logFile
+else
+	su $ACTIVE_USER -c /System/Library/CoreServices/Dock.app/Contents/MacOS/Dock
+    echo "Force launching the Dock." | timestamp >> $logFile
+fi
+# Set the path for the dock command line tool.
+DOCK_UTIL="/usr/local/bin/dockutil"
+echo "Dockutil path ${DOCK_UTIL}" | timestamp >> $logFile
+
+# Adding required items.
+
+echo "Adding MS Word." | timestamp >> $logFile
+if [ -d "/Applications/Microsoft Word.app" ]; then
+	$DOCK_UTIL --add "/Applications/Microsoft Word.app" --no-restart $DOCK_PREF
+fi
+
+echo "Adding MS Excel." | timestamp >> $logFile
+if [ -d "/Applications/Microsoft Excel.app" ]; then
+	$DOCK_UTIL --add "/Applications/Microsoft Excel.app" --no-restart $DOCK_PREF
+fi
+
+echo "Adding MS Powerpoint." | timestamp >> $logFile
+if [ -d "/Applications/Microsoft Powerpoint.app" ]; then
+	$DOCK_UTIL --add "/Applications/Microsoft Powerpoint.app" --no-restart $DOCK_PREF
+fi
+
+echo "Adding MS OneNote." | timestamp >> $logFile
+if [ -d "/Applications/Microsoft OneNote.app" ]; then
+	$DOCK_UTIL --add "/Applications/Microsoft OneNote.app" --no-restart $DOCK_PREF
+fi
+
+echo "Adding Chrome." | timestamp >> $logFile
+if [ -d "/Applications/Google Chrome.app" ]; then
+	$DOCK_UTIL --add "/Applications/Google Chrome.app" --no-restart $DOCK_PREF
+    $DOCK_UTIL --move "Google Chrome" --after "Safari" --no-restart $DOCK_PREF
+fi
+
+echo "Adding Acrobat." | timestamp >> $logFile
+if [ -d "/Applications/Adobe Acrobat" ]; then
+	$DOCK_UTIL --add "/Applications/Adobe Acrobat DC/Adobe Acrobat.app" --no-restart $DOCK_PREF
+fi
+
+echo "Adding Illustrator." | timestamp >> $logFile
+if [ -d "/Applications/Adobe Illustrator CC 2018" ]; then
+	$DOCK_UTIL --add "/Applications/Adobe Illustrator CC 2018/Adobe Illustrator.app" --no-restart $DOCK_PREF
+fi
+
+
+echo "Adding InDesign." | timestamp >> $logFile
+if [ -d "/Applications/Adobe InDesign CC 2018" ]; then
+	$DOCK_UTIL --add "/Applications/Adobe InDesign CC 2018/Adobe InDesign CC 2018.app" --no-restart $DOCK_PREF
+fi
+
+echo "Adding Photoshop." | timestamp >> $logFile
+if [ -d "/Applications/Adobe Photoshop CC 2018" ]; then
+	$DOCK_UTIL --add "/Applications/Adobe Photoshop CC 2018/Adobe Photoshop CC 2018.app" --no-restart $DOCK_PREF
+fi
+
+if hostname | grep "educ-" >/dev/null 2>&1 ; then
+	echo "Adding Bridge." | timestamp >> $logFile
+	if [ -d "/Applications/Adobe Bridge CC 2018" ]; then
+		$DOCK_UTIL --add "/Applications/Adobe Bridge CC 2018/Adobe Bridge CC 2018.app" --no-restart $DOCK_PREF
+	fi
+fi
+
+echo "Add to display" | timestamp >> $logFile
+if [ -d "/Library/MacSD/Applications" ]; then
+	# Make sure the icon is set
+	python -c 'import Cocoa; Cocoa.NSWorkspace.sharedWorkspace().setIcon_forFile_options_(Cocoa.NSImage.alloc().initWithContentsOfFile_("/System/Library/CoreServices/CoreTypes.bundle/Contents/Resources/ApplicationsFolderIcon.icns"), "/Library/MacSD/Applications", 0)'
+	# Add the dir to the dock
+	$DOCK_UTIL --add "/Library/MacSD/Applications" --view list --display folder --sort name --no-restart $DOCK_PREF
+fi
+
+sleep 2
+
+# Remove non-required Dock items.
+
+echo "Removing Dock items that are not required." | timestamp >> $logFile
+
+$DOCK_UTIL --remove "Siri" --no-restart $DOCK_PREF
+$DOCK_UTIL --remove "Mail" --no-restart $DOCK_PREF
+$DOCK_UTIL --remove "Contacts" --no-restart $DOCK_PREF
+$DOCK_UTIL --remove "Calendar" --no-restart $DOCK_PREF
+$DOCK_UTIL --remove "News" --no-restart $DOCK_PREF
+$DOCK_UTIL --remove "Notes" --no-restart $DOCK_PREF
+$DOCK_UTIL --remove "Reminders" --no-restart $DOCK_PREF
+$DOCK_UTIL --remove "Maps" --no-restart $DOCK_PREF
+$DOCK_UTIL --remove "Photos" --no-restart $DOCK_PREF
+$DOCK_UTIL --remove "Messages" --no-restart $DOCK_PREF
+$DOCK_UTIL --remove "FaceTime"	--no-restart $DOCK_PREF
+$DOCK_UTIL --remove "iTunes" --no-restart $DOCK_PREF
+$DOCK_UTIL --remove "iBooks" --no-restart $DOCK_PREF
+$DOCK_UTIL --remove "Launchpad" --no-restart $DOCK_PREF
+$DOCK_UTIL --remove "App Store" --no-restart $DOCK_PREF
+$DOCK_UTIL --remove "System Preferences" --no-restart $DOCK_PREF
+$DOCK_UTIL --remove "Music" --no-restart $DOCK_PREF
+$DOCK_UTIL --remove "Podcasts" --no-restart $DOCK_PREF
+$DOCK_UTIL --remove "TV" --no-restart $DOCK_PREF
+
+# Generate web links for OneDrive and Outlook and add them to the Dock
+echo "Adding web links for OneDrive and Outlook." | timestamp >> $logFile
+OneDriveURL="/Library/MacSD/Office 365 OneDrive.url"
+echo '[InternetShortcut]' > "$OneDriveURL"
+echo -n 'URL=' >> "$OneDriveURL"
+echo "https://uoe-my.sharepoint.com/personal/${ACTIVE_USER}_ed_ac_uk" >> "$OneDriveURL"
+python -c 'import Cocoa; Cocoa.NSWorkspace.sharedWorkspace().setIcon_forFile_options_(Cocoa.NSImage.alloc().initWithContentsOfFile_("/usr/local/jamf/onedrive.png"), "/Library/MacSD/Office 365 OneDrive.url", 0)'
+$DOCK_UTIL --add "$OneDriveURL" --section others --no-restart $DOCK_PREF
+
+OutlookURL="/Library/MacSD/Office 365 Email.url"
+echo '[InternetShortcut]' > "$OutlookURL"
+echo -n 'URL=' >> "$OutlookURL"
+echo https://outlook.com/ed.ac.uk/ >> "$OutlookURL"
+python -c 'import Cocoa; Cocoa.NSWorkspace.sharedWorkspace().setIcon_forFile_options_(Cocoa.NSImage.alloc().initWithContentsOfFile_("/Applications/Microsoft Outlook.app/Contents/Resources/Outlook.icns"), "/Library/MacSD/Office 365 Email.url", 0)'
+$DOCK_UTIL --add "$OutlookURL" --section others --no-restart $DOCK_PREF
+
+echo "Adding Help and support." | timestamp >> $logFile
+HelpURL="/Library/MacSD/Help & Support.url"
+echo '[InternetShortcut]' > "$HelpURL"
+echo -n 'URL=' >> "$HelpURL"
+echo https://www.ed.ac.uk/is/it-help >> "$HelpURL"
+python -c 'import Cocoa; Cocoa.NSWorkspace.sharedWorkspace().setIcon_forFile_options_(Cocoa.NSImage.alloc().initWithContentsOfFile_("/Library/MacSD/Support.icns"), "/Library/MacSD/Help & Support.url", 0)'
+$DOCK_UTIL --add "$HelpURL" --section others --no-restart $DOCK_PREF
+
+# Tweak to remove the icloud link
+echo "Remove iCloud link" | timestamp >> $logFile
+
+	python - <<EOF
+import sys
+sys.path.append('/usr/local/python')
+from FinderSidebarEditor import FinderSidebar                  # Import the module
+sidebar = FinderSidebar()                                      # Create a Finder sidebar instance to act on.
+sidebar.remove("iCloud")                                       # Remove Desktop favourite again just incase it re-appears
+EOF
+
+sleep 5
+
+# Kill the dock so it will relaunch with our added content.
+echo "Killing Dock" | timestamp >> $logFile
+killall Dock
+echo "Done" | timestamp >> $logFile
+
+exit 0;
