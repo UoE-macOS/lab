@@ -17,9 +17,9 @@
 #     a wake might occur
 #
 # $6: Randomise interval - a number of minutes which provde an interval
-#     after the start time, during which a reboot will be scheduled to happen
+#     after the start time, during which a wake will be scheduled to happen
 #
-# EXAMPLE: to set machines to reboot between 1am and 3.30am every morning, 
+# EXAMPLE: to set machines to wake between 1am and 3.30am every morning, 
 # you would give the following arguments:
 # 
 # $4 = MTWRFSU
@@ -42,7 +42,8 @@ randomise_interval_minutes="${6}"
 
 minute_offset=$(jot -r 1 0 "${randomise_interval_minutes}")
 
-# Generate a pmset command to set things up the way we want
+# Generate start time using the date commend to add the offset minutes
+# to the specififed start time.
 restart_time="$(date -j -v +"${minute_offset}"M "${randomise_time_start}" +%H:%M:00)"
 
 if pmset repeat wake "${days}" "${restart_time}"
