@@ -48,9 +48,9 @@ restart_time="$(date -j -v +"${minute_offset}"M "${randomise_time_start}" +%H:%M
 if pmset repeat wake "${days}" "${restart_time}"
 then
     echo "Restart set for ${restart_time} on ${days}"
-    exit 1
+    exit 0
 else
     echo "Failed to set restart for ${restart_time} on ${days}"
-    exit 0
+    exit 1
 fi
 
