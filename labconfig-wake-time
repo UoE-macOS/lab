@@ -1,26 +1,56 @@
 #!/bin/bash
 
-###################################################################
+###############################################################################
 #
-# Schedule wake times for Macs to install software updates overnight.
+# Schedule a time for a Mac to wake up overnight.
 #
-# Date: Thu 07 Sep 2017 11:30:33 BST
-# Version: 0.1.2
-# Creator: dsavage
+# This script expects to be run from a JAMF JSS. It allows the randomisation
+# of the wake time witin a range of minutes, starting at a particular time.
 #
-##################################################################
+# It takes three arguments:
+# 
+# $4: Days - this should be in the format expected by the `pmset`
+#     command, ie a subset pf MTWRFSU
+#
+# $5: Randomise start time - this is the time (HH:MM) that will be 
+#     used as the starting point for the interval during which a
+#     a wake might occur
+#
+# $6: Randomise interval - a number of minutes which provde an interval
+#     after the start time, during which a reboot will be scheduled to happen
+#
+# EXAMPLE: to set machines to reboot between 1am and 3.30am every morning, 
+# you would give the following arguments:
+# 
+# $4 = MTWRFSU
+# $5 = 01:00
+# $6 = 150 (150 minutes = 2.5 hours)
+# 
+####
+# Date: @@DATE
+# Version: @@VERSION
+# Origin: @@ORIGIN
+# Link: @@ORIGIN/commit/@@VERSION
+#
+# Released by JSS User: @@USER
+#################################################################################
+set -ueo pipefail
 
-# Labs should wake every day, so look for that "wake at 2:00AM every day" so $4.
-Lab_Wake_Check=`pmset -g sched | grep wake | awk '{print $4}'`
- 
-if [ "${Lab_Wake_Check}" == "every" ]; then
-    echo a schedule has been set on this Mac already.
+days="$4"
+randomise_time_start="$(echo "${5}" | sed -E 's/://g')"
+randomise_interval_minutes="${6}"
+
+minute_offset=$(jot -r 1 0 "${randomise_interval_minutes}")
+
+# Generate a pmset command to set things up the way we want
+restart_time="$(date -j -v +"${minute_offset}"M "${randomise_time_start}" +%H:%M:00)"
+
+if pmset repeat wake "${days}" "${restart_time}"
+then
+    echo "Restart set for ${restart_time} on ${days}"
+    exit 1
 else
-    # jot -- print sequential or random data. In our case randomise the hour.
-    Hour=`jot -r 1  1 5`
-    # Schedule a repeating wake on Monday, Wednesday and Friday at an hour between 1am and 5am.
-    # Only schedule a wake, not a power on to avoid aggravating users.
-    pmset repeat wake MTWRFSU 0${Hour}:00:00
+    echo "Failed to set restart for ${restart_time} on ${days}"
+    exit 0
 fi
- 
-exit 0;
+
