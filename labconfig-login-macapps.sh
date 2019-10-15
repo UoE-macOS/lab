@@ -36,9 +36,9 @@ fi
 
 # Add the accessories, bit of a cheat since this would normally be in a policy that "adds" the app.
 echo "$PathToApps/Calculator.app+${ACC}/Calculator.app" > "${ConfigDir}/LN~Accessories~Calculator.app"
-echo "$PathToApps/Image Capture.app+${ACC}/Image Capture.app" > "${ConfigDir}/LN~Accessories~Image Capture.app"
-echo "$PathToApps/Utilities/Grab.app+${ACC}/Grab.app" > "${ConfigDir}/LN~Accessories~Grab.app"
 echo "$PathToApps/Utilities/Grapher.app+${ACC}/Grapher.app" > "${ConfigDir}/LN~Accessories~Grapher.app"
+echo "$PathToApps/Image Capture.app+${ACC}/Image Capture.app" > "${ConfigDir}/LN~Accessories~Image Capture.app"
+echo "$PathToApps/Utilities/Screenshot.app+${ACC}/Screenshot.app" > "${ConfigDir}/LN~Accessories~Screenshot.app"
 echo "$PathToApps/Utilities/Terminal.app+${ACC}/Terminal.app" > "${ConfigDir}/LN~Accessories~Terminal.app"
 
 # Add each app
