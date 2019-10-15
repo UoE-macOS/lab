@@ -2,12 +2,12 @@
 
 ######
 #
-# This script reads in the app link configs and creates or deletes the app synlinks as required
+# This script reads in the app link configs and creates or deletes the app symlinks as required
 #
 #
-# Date: Thur 16 Aug 2018 14:51:00 BST
-# Version: 0.1.3
-# Author: dsavage
+# Date: Tue 15 Oct 2019 14:55:40 BST
+# Version: 0.1.4
+# Author: ganders1
 #
 ######
 
@@ -24,12 +24,22 @@ else
   python -c 'import Cocoa; Cocoa.NSWorkspace.sharedWorkspace().setIcon_forFile_options_(Cocoa.NSImage.alloc().initWithContentsOfFile_("/System/Library/CoreServices/CoreTypes.bundle/Contents/Resources/ApplicationsFolderIcon.icns"), "/Library/MacSD/Applications", 0)'
 fi
 
-# Add the accesories, bit of a cheat since this would normally be in a policy that "adds" the app.
-echo "/Applications/Calculator.app+${ACC}/Calculator.app" > "${ConfigDir}/LN~Accessories~Calculator.app"
-echo "/Applications/Image Capture.app+${ACC}/Image Capture.app" > "${ConfigDir}/LN~Accessories~Image Capture.app"
-echo "/Applications/Utilities/Grab.app+${ACC}/Grab.app" > "${ConfigDir}/LN~Accessories~Grab.app"
-echo "/Applications/Utilities/Grapher.app+${ACC}/Grapher.app" > "${ConfigDir}/LN~Accessories~Grapher.app"
-echo "/Applications/Utilities/Terminal.app+${ACC}/Terminal.app" > "${ConfigDir}/LN~Accessories~Terminal.app"
+# Check correct path to system applications is being used for 10.15+
+
+OSVersion=`sw_vers | grep ProductVersion | awk -F "." '{print $2}'`
+
+if [ $OSVersion -le 14 ]; then
+PathToApps="/Applications"
+else
+PathToApps="/System/Applications"
+fi
+
+# Add the accessories, bit of a cheat since this would normally be in a policy that "adds" the app.
+echo "$PathToApps/Calculator.app+${ACC}/Calculator.app" > "${ConfigDir}/LN~Accessories~Calculator.app"
+echo "$PathToApps/Image Capture.app+${ACC}/Image Capture.app" > "${ConfigDir}/LN~Accessories~Image Capture.app"
+echo "$PathToApps/Utilities/Grab.app+${ACC}/Grab.app" > "${ConfigDir}/LN~Accessories~Grab.app"
+echo "$PathToApps/Utilities/Grapher.app+${ACC}/Grapher.app" > "${ConfigDir}/LN~Accessories~Grapher.app"
+echo "$PathToApps/Utilities/Terminal.app+${ACC}/Terminal.app" > "${ConfigDir}/LN~Accessories~Terminal.app"
 
 # Add each app
 SAVEIFS=$IFS
