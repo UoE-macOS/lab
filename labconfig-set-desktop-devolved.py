@@ -13,67 +13,80 @@
     3. eca.{jpg,png}
 """
 from __future__ import print_function
-from AppKit import NSWorkspace, NSScreen
-from Foundation import NSURL
-from subprocess import call
-from os import system, listdir
 import socket
 import sys
-import os 
+import os
+from AppKit import NSWorkspace, NSScreen
+from Foundation import NSURL
 
-my_fullname = socket.gethostname()
-my_shortname = my_fullname.split('.')[0]
+VALID_TYPES = ['jpg', 'png']
 
-my_school = my_shortname.split('-')[0]
-my_lab = my_shortname.split('-')[1]
-my_number = my_shortname.split('-')[2]
+def main():
+    """ Find and apply the most appropriate desktop pic for this machine """
+    final_path = find_picture(str(sys.argv[4]))
 
-print("School: ", my_school)
-print("Lab: ", my_lab)
-print("Number: ", my_number)
+    if not final_path:
+        sys.exit(1)
 
-path = str(sys.argv[4])
-picture_path = None
+    print('Picture Path - ', final_path)
 
-valid_types = ['jpg', 'png']
+    file_url = NSURL.fileURLWithPath_(final_path)
+    options = {}
+    ws = NSWorkspace.sharedWorkspace()
+    for screen in NSScreen.screens():
+        (result, error) = ws.setDesktopImageURL_forScreen_options_error_(file_url,
+                                                                         screen, options, None)
 
-for file_type in valid_types:
-    # If we've been given a path to an image file, just use it.
-    if path.endswith(file_type):
-        picture_path = path
-        break
+
+def find_picture(path):
+    """ Return the most appropriate desktop picture for this machine
+        or None if we can't find one
+    """
+    my_fullname = socket.gethostname()
+    my_shortname = my_fullname.split('.')[0]
+
+    my_school = my_shortname.split('-')[0]
+    my_lab = my_shortname.split('-')[1]
+    my_number = my_shortname.split('-')[2]
+
+    print("School: ", my_school)
+    print("Lab: ", my_lab)
+    print("Number: ", my_number)
+
+    picture_path = None
+
+    for file_type in VALID_TYPES:
+        # If we've been given a path to an image file, just use it.
+        if path.endswith(file_type):
+            return path
 
     # Otherwise, assume we have been given a directory
-    # and search hierarchically for a machine-, lab-, or 
+    # and search hierarchically for a machine-, lab-, or
     # school-level image.
     if not os.path.isdir(path):
         print("Not a jpg, png or a directory: ", path)
-        sys.exit(1)
+        return None
 
     # Match files in the picture dir in order of preference
     candidates = os.listdir(path)
+    for file_type in VALID_TYPES:
+        if '{}.{}'.format(my_shortname, file_type) in candidates:
+            picture_path = os.path.join(path, "{}.{}".format(my_shortname, file_type))
+            return picture_path
 
-    if '{}.{}'.format(my_shortname, file_type) in candidates:
-        picture_path = os.path.join(path, "{}.{}".format(my_shortname, file_type))
-        break
+    for file_type in VALID_TYPES:
+        if '{}-{}.{}'.format(my_school, my_lab, file_type) in candidates:
+            picture_path = os.path.join(path, '{}-{}.{}'.format(my_school, my_lab, file_type))
+            return picture_path
 
-    if '{}-{}.{}'.format(my_school, my_lab, file_type) in candidates:
-        picture_path = os.path.join(path, '{}-{}.{}'.format(my_school, my_lab, file_type))
-        break
+    for file_type in VALID_TYPES:
+        if '{}.{}'.format(my_school, file_type) in candidates:
+            picture_path = os.path.join(path, "{}.{}".format(my_school, file_type))
+            return picture_path
 
-    if '{}.{}'.format(my_school, file_type) in candidates:
-        picture_path = os.path.join(path, "{}.{}".format(my_school, file_type))
-        break
-
-if not picture_path:
+    # If we got to here, we have run out of options.
     print("Couldn't find a picture for ", my_shortname)
-    sys.exit(0)
+    return None
 
-print('Picture Path - ', picture_path)
-
-# file_url = NSURL.fileURLWithPath_(picture_path)
-# options = {}
-# ws = NSWorkspace.sharedWorkspace()
-# for screen in NSScreen.screens():
-#     (result, error) = ws.setDesktopImageURL_forScreen_options_error_(file_url,
-#                                                                      screen, options, None)
+if __name__ == "__main__":
+    main()
