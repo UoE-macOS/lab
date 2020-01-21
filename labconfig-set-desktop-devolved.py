@@ -11,6 +11,9 @@
     1. eca-alsems-m006.{jpg, png}
     2. eca-alsems.{jpg, png}
     3. eca.{jpg,png}
+
+    As a last resort the script will also look for a file named {SCHOOL}-Desktop.jpg
+    and will use that if it can't find any of the above.
 """
 from __future__ import print_function
 import socket
@@ -83,6 +86,11 @@ def find_picture(path):
         if '{}.{}'.format(my_school, file_type) in candidates:
             picture_path = os.path.join(path, "{}.{}".format(my_school, file_type))
             return picture_path
+
+    # Finally, fall back on the defaults installed by the OA labs desktops package
+    fallback = os.path.join(path, "{}-Desktop.jpg".format(my_school.upper()))
+    if os.path.exists(fallback):
+        return fallback
 
     # If we got to here, we have run out of options.
     print("Couldn't find a picture for ", my_shortname)
