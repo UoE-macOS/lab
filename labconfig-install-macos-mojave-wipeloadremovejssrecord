@@ -5,9 +5,9 @@
 # Enable macOS wipe and load for lab Macs (10.14)
 
 #
-# Date: Thu  4 Jul 2019 14:33:47 BST
-# Version: 0.1.5
-# Creator: ganders1
+# Date: Thu 6 Feb 2020 15:54:23 GMT
+# Version: 0.1.7
+# Creator: dsavage
 #
 ##################################################################
 
@@ -24,8 +24,9 @@ then
 exit 0
 fi
 
-##Check if free space > 15GB
-freeSpace=$( /usr/sbin/diskutil info / | grep "Free Space" | awk '{print $4}' )
+# Check if free space > 15GB
+bootDisk=`diskutil info / | grep "Device Node:" | awk '{print $3}'`
+freeSpace=`df -g | grep "${Boot_Disk}" | awk '{print $4}'`
 if [[ ${freeSpace%.*} -ge 15 ]]; then
     spaceStatus="OK"
     /bin/echo "Disk Check: OK - ${freeSpace%.*} Free Space Detected"
@@ -53,7 +54,7 @@ else
 	# Do a delete incase an older version is there
 	rm -fR "/Applications/Install macOS Mojave.app"
     # Add the installer
-    /usr/local/bin/jamf policy -event OS-Installer
+    /usr/local/bin/jamf policy -event OS-Installer-14
 
     # Remove JSS record for machine being wiped and loaded to help ensure integrity of fresh build. It will re-enrol at the end of the process.
     /usr/local/bin/jamf policy -event RemoveJSSRecord
